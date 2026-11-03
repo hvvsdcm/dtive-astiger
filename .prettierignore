@@ -1,0 +1,10 @@
+dist
+coverage
+node_modules
+package-lock.json
+public
+brand
+supabase/.temp
+supabase/seed-assets
+src/types/database.ts
+docs/PLAN.md

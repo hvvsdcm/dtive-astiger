@@ -1,0 +1,117 @@
+/*
+ * Design tokens — the only source of colours, type, motion and layering (docs/PLAN.md ③).
+ * Tailwind's default palette, radii and shadows are cleared on purpose: anything not declared here
+ * has no utility class. border-radius is 0 everywhere; there are no shadows.
+ */
+@theme {
+  --color-*: initial;
+  --color-white: #ffffff;
+  --color-black: #000000;
+  --color-bg: #fbfbf9;
+  --color-surface: #f2f2ef;
+  --color-ink: #121110;
+  --color-ink-hover: #2a2a28;
+  --color-ink-muted: #6b6a66;
+  --color-line: #e3e2dd;
+  --color-line-strong: #121110;
+  --color-field: #c9c8c3;
+  --color-ice: #d9e6f5;
+  --color-ice-ink: #4b6480;
+  --color-danger: #b3261e;
+  --color-success: #2e6b3f;
+  --color-footer: #0a0a0a;
+  --color-footer-muted: #9a9a94;
+  --color-overlay: rgb(0 0 0 / 0.32);
+
+  --radius-*: initial;
+  --shadow-*: initial;
+  --inset-shadow-*: initial;
+  --drop-shadow-*: initial;
+  --text-shadow-*: initial;
+  --blur-*: initial;
+
+  --font-*: initial;
+  --font-sans:
+    'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-display: 'Bodoni Moda Variable', 'Bodoni Moda', 'Times New Roman', serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --font-weight-*: initial;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+
+  --text-*: initial;
+  --text-2xs: 11px;
+  --text-2xs--line-height: 16px;
+  --text-xs: 12px;
+  --text-xs--line-height: 16px;
+  --text-sm: 13px;
+  --text-sm--line-height: 20px;
+  --text-base: 14px;
+  --text-base--line-height: 22px;
+  --text-md: 16px;
+  --text-md--line-height: 24px;
+  --text-lg: 20px;
+  --text-lg--line-height: 28px;
+  --text-xl: 28px;
+  --text-xl--line-height: 34px;
+  --text-xl--font-weight: 500;
+  --text-2xl: 40px;
+  --text-2xl--line-height: 44px;
+  --text-2xl--font-weight: 500;
+
+  --tracking-*: initial;
+  --tracking-normal: 0;
+  --tracking-label: 0.06em;
+
+  --ease-*: initial;
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-panel: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --default-transition-duration: 200ms;
+  --default-transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+
+  --animate-*: initial;
+  --animate-spin: spin 0.8s linear infinite;
+  --animate-pulse: pulse 1.6s ease-in-out infinite;
+
+  /* Header height: 56 mobile, 64 from lg. Sticky offsets use these. */
+  --spacing-header: 56px;
+  --spacing-header-lg: 64px;
+}
+
+/* Home hero title: 40/44 mobile, 64/64 from lg (display 500). */
+@utility text-hero {
+  font-size: 40px;
+  line-height: 44px;
+  font-weight: 500;
+  @media (width >= 64rem) {
+    font-size: 64px;
+    line-height: 64px;
+  }
+}
+
+/* Page gutters: 16 (<768) / 24 (768–1279) / 40 (≥1280). */
+@utility px-gutter {
+  padding-inline: 16px;
+  @media (width >= 48rem) {
+    padding-inline: 24px;
+  }
+  @media (width >= 80rem) {
+    padding-inline: 40px;
+  }
+}
+
+/* Vertical rhythm between page sections: 64 mobile / 96 desktop. */
+@utility py-section {
+  padding-block: 64px;
+  @media (width >= 64rem) {
+    padding-block: 96px;
+  }
+}
+
+/* Uppercase latin label (nav, badges). Korean text must not use it. */
+@utility label-caps {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}

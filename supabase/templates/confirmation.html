@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>이메일 주소 확인</title>
+  </head>
+  <body
+    style="
+      margin: 0;
+      padding: 0;
+      background: #fbfbf9;
+      color: #121110;
+      font-family:
+        -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+    "
+  >
+    <table
+      role="presentation"
+      width="100%"
+      cellpadding="0"
+      cellspacing="0"
+      style="background: #fbfbf9"
+    >
+      <tr>
+        <td align="center" style="padding: 48px 16px">
+          <table
+            role="presentation"
+            width="100%"
+            cellpadding="0"
+            cellspacing="0"
+            style="max-width: 480px"
+          >
+            <tr>
+              <td style="padding-bottom: 32px; font-size: 13px; letter-spacing: 0.06em">
+                DTIVE &amp; ASTIGER
+              </td>
+            </tr>
+            <tr>
+              <td style="padding-bottom: 16px; font-size: 20px; line-height: 28px">
+                이메일 주소 확인
+              </td>
+            </tr>
+            <tr>
+              <td style="padding-bottom: 32px; font-size: 14px; line-height: 22px">
+                아래 버튼을 눌러 {{ .Email }} 주소를 확인하면 가입이 완료됩니다.
+              </td>
+            </tr>
+            <tr>
+              <td style="padding-bottom: 32px">
+                <a
+                  href="{{ .ConfirmationURL }}"
+                  style="
+                    display: inline-block;
+                    padding: 13px 24px;
+                    background: #121110;
+                    color: #ffffff;
+                    font-size: 14px;
+                    text-decoration: none;
+                  "
+                  >이메일 확인</a
+                >
+              </td>
+            </tr>
+            <tr>
+              <td
+                style="
+                  padding-top: 16px;
+                  border-top: 1px solid #e3e2dd;
+                  font-size: 12px;
+                  line-height: 16px;
+                  color: #6b6a66;
+                "
+              >
+                본인이 요청하지 않았다면 이 메일을 무시하세요. 링크는 1시간 동안 유효합니다.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
