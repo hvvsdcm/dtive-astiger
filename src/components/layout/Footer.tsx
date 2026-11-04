@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import { Link } from 'react-router';
 import { business } from '@/config/business';
 import { footerNav } from '@/config/site';
@@ -13,16 +14,29 @@ export function Footer() {
     (item) => item.href !== '',
   );
 
-  const legal = [
-    business.companyName && `상호 ${business.companyName}`,
-    business.ceo && `대표 ${business.ceo}`,
-    business.bizNo && `사업자등록번호 ${business.bizNo}`,
-    business.mailOrderNo && `통신판매업신고번호 ${business.mailOrderNo}`,
-    business.address && `주소 ${business.address}`,
-    business.phone && `전화 ${business.phone}`,
-    business.email && `이메일 ${business.email}`,
-    business.privacyOfficer.name && `개인정보보호책임자 ${business.privacyOfficer.name}`,
-  ].filter(Boolean);
+  const officer = business.privacyOfficer;
+  // [label, value, link]. Each entry is hidden while its value in business.ts is empty.
+  const legal: [string, string, { label: string; href: string }?][] = [
+    ['상호', business.companyName],
+    ['대표', business.ceo],
+    [
+      '사업자등록번호',
+      business.bizNo,
+      {
+        label: '사업자정보확인',
+        href: `https://www.ftc.go.kr/bizCommPop.do?wrkr_no=${business.bizNo.replace(/\D/g, '')}`,
+      },
+    ],
+    ['통신판매업신고번호', business.mailOrderNo],
+    ['주소', business.address],
+    ['전화', business.phone],
+    ['이메일', business.email],
+    [
+      '개인정보보호책임자',
+      officer.name && (officer.email ? `${officer.name} (${officer.email})` : officer.name),
+    ],
+    ['호스팅제공자', business.hostingProvider],
+  ];
 
   return (
     <footer data-theme="dark" className="bg-footer text-white">
@@ -83,7 +97,32 @@ export function Footer() {
 
       <div className="border-t border-white/10 px-gutter py-6">
         <p className="text-2xs text-footer-muted">
-          {[...legal, `© ${copyrightYear} ${business.brandName}`].join(' · ')}
+          {legal
+            .filter(([, value]) => value !== '')
+            .map(([label, value, link]) => (
+              <Fragment key={label}>
+                <span className="inline-block">
+                  {label} {value}
+                  {link ? (
+                    <>
+                      {' '}
+                      <a
+                        href={link.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline underline-offset-2 hover:text-white"
+                      >
+                        {link.label}
+                      </a>
+                    </>
+                  ) : null}
+                </span>
+                {' · '}
+              </Fragment>
+            ))}
+          <span className="inline-block">
+            © {copyrightYear} {business.brandName}
+          </span>
         </p>
       </div>
     </footer>

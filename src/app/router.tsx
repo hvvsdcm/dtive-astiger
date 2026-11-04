@@ -4,6 +4,7 @@ import { catalogRoutes } from '@/features/catalog/routes';
 import { accountRoutes } from '@/features/account/routes';
 import { authRoutes } from '@/features/auth/routes';
 import { checkoutRoutes } from '@/features/checkout/routes';
+import { contentRoutes } from '@/features/content/routes';
 import { NotFoundPage } from './NotFoundPage';
 import { RouteError } from './RouteError';
 import { requireAdmin } from './guards';
@@ -19,6 +20,7 @@ const storeRoutes: RouteObject[] = [
   ...authRoutes,
   ...accountRoutes,
   ...checkoutRoutes,
+  ...contentRoutes,
   { path: '*', element: <NotFoundPage /> },
 ];
 
@@ -52,6 +54,32 @@ const adminPages: RouteObject[] = [
     lazy: async () => ({
       Component: (await import('@/admin/pages/CategoriesPage')).CategoriesPage,
     }),
+  },
+  {
+    path: 'orders',
+    lazy: async () => ({ Component: (await import('@/admin/pages/OrdersPage')).OrdersPage }),
+  },
+  {
+    path: 'orders/:id',
+    lazy: async () => ({
+      Component: (await import('@/admin/pages/OrderDetailPage')).OrderDetailPage,
+    }),
+  },
+  {
+    path: 'customers',
+    lazy: async () => ({
+      Component: (await import('@/admin/pages/CustomersPage')).CustomersPage,
+    }),
+  },
+  {
+    path: 'home',
+    lazy: async () => ({
+      Component: (await import('@/admin/pages/HomeSectionsPage')).HomeSectionsPage,
+    }),
+  },
+  {
+    path: 'settings',
+    lazy: async () => ({ Component: (await import('@/admin/pages/SettingsPage')).SettingsPage }),
   },
   { path: '*', element: <NotFoundPage /> },
 ];

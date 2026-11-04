@@ -2,12 +2,17 @@ import { describe, expect, it } from 'vitest';
 import {
   buildRows,
   defaultSku,
+  isInternalHref,
   optionsFromRows,
   productSchema,
+  sectionSchema,
+  settingsSchema,
   slugify,
   suggestSlug,
+  trackingSchema,
   validateVariantRows,
   type ProductFormInput,
+  type SettingsFormInput,
   type VariantRowInput,
 } from './schemas';
 
@@ -112,5 +117,124 @@ describe('variants', () => {
       ok: true,
       rows: [expect.objectContaining({ stock: 3, priceDelta: -5000 })],
     });
+  });
+});
+
+describe('section links', () => {
+  it('accepts app paths only', () => {
+    for (const href of ['/', '/shop/women', '/lookbook?season=aw26', '/products/a#b']) {
+      expect(isInternalHref(href)).toBe(true);
+    }
+    for (const href of [
+      'https://evil.example',
+      '//evil.example',
+      '/\\evil.example',
+      'javascript:alert(1)',
+      ' /shop',
+      '/shop women',
+      'shop',
+      '/a\u0000b',
+    ]) {
+      expect(isInternalHref(href)).toBe(false);
+    }
+  });
+});
+
+describe('sectionSchema', () => {
+  const base = { title: 'Women', linkLabel: '', linkHref: '' };
+
+  it('requires an image for hero and split', () => {
+    expect(sectionSchema.safeParse({ kind: 'hero', ...base, imagePath: '' }).success).toBe(false);
+    expect(
+      sectionSchema.safeParse({
+        kind: 'split',
+        ...base,
+        imagePath: 'banners/a/b.webp',
+        imagePath2: null,
+      }).success,
+    ).toBe(true);
+  });
+
+  it('needs both link label and path, or neither', () => {
+    const result = sectionSchema.safeParse({
+      kind: 'hero',
+      ...base,
+      linkLabel: 'Shop',
+      imagePath: 'banners/a/b.webp',
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]?.path).toEqual(['linkHref']);
+  });
+
+  it('rejects external links, also inside lookbook items', () => {
+    expect(
+      sectionSchema.safeParse({
+        kind: 'hero',
+        ...base,
+        linkLabel: 'Go',
+        linkHref: 'javascript:alert(1)',
+        imagePath: 'banners/a/b.webp',
+      }).success,
+    ).toBe(false);
+    const result = sectionSchema.safeParse({
+      kind: 'lookbook',
+      ...base,
+      items: [{ imagePath: 'banners/a/b.webp', caption: 'Look 01', href: 'https://x.example' }],
+    });
+    expect(result.error?.issues[0]?.path).toEqual(['items', 0, 'href']);
+  });
+
+  it('needs a category or products for a collection', () => {
+    expect(
+      sectionSchema.safeParse({ kind: 'collection', ...base, categoryId: '', productIds: [] })
+        .success,
+    ).toBe(false);
+    expect(
+      sectionSchema.safeParse({
+        kind: 'collection',
+        ...base,
+        categoryId: '',
+        productIds: ['3522c0db-45c4-4900-862d-65019478e239'],
+      }).success,
+    ).toBe(true);
+  });
+});
+
+describe('settingsSchema', () => {
+  const settings: SettingsFormInput = {
+    shippingFee: '3000',
+    freeShippingThreshold: '100000',
+    bankName: '국민은행',
+    bankAccount: '000000-00-000000',
+    bankHolder: '디티브아시티거',
+    paymentDueHours: '48',
+  };
+
+  it('parses numbers and treats an empty threshold as none', () => {
+    expect(settingsSchema.parse({ ...settings, freeShippingThreshold: '' })).toMatchObject({
+      shippingFee: 3000,
+      freeShippingThreshold: null,
+      paymentDueHours: 48,
+    });
+  });
+
+  it('rejects bad account numbers, a zero threshold and deadlines out of 1–168', () => {
+    expect(settingsSchema.safeParse({ ...settings, bankAccount: '12 34' }).success).toBe(false);
+    expect(settingsSchema.safeParse({ ...settings, freeShippingThreshold: '0' }).success).toBe(
+      false,
+    );
+    expect(settingsSchema.safeParse({ ...settings, paymentDueHours: '0' }).success).toBe(false);
+    expect(settingsSchema.safeParse({ ...settings, paymentDueHours: '169' }).success).toBe(false);
+  });
+});
+
+describe('trackingSchema', () => {
+  it('matches the server waybill rule', () => {
+    expect(trackingSchema.safeParse({ carrier: 'cj', trackingNo: ' 1234-5678 ' }).data).toEqual({
+      carrier: 'cj',
+      trackingNo: '1234-5678',
+    });
+    expect(trackingSchema.safeParse({ carrier: '', trackingNo: '1' }).success).toBe(false);
+    expect(trackingSchema.safeParse({ carrier: 'cj', trackingNo: '12 34' }).success).toBe(false);
   });
 });

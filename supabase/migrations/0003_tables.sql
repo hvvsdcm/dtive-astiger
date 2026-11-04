@@ -192,6 +192,9 @@ create table public.site_settings (
   updated_by uuid
 );
 
+-- Singleton row must exist in every environment (production gets no seed.sql).
+insert into public.site_settings (id) values (1) on conflict (id) do nothing;
+
 -- items (lookbook only): [{ "image_path": string, "caption": string, "href": string }]
 create table public.home_sections (
   id uuid primary key default gen_random_uuid(),

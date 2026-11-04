@@ -40,8 +40,10 @@ insert into public.admins (user_id, note) values ('a0000000-0000-4000-8000-00000
 
 -- Settings ---------------------------------------------------------------------------------------
 
-insert into public.site_settings (id, shipping_fee, free_shipping_threshold, bank_name, bank_account, bank_holder, payment_due_hours)
-values (1, 3000, 100000, '국민은행', '000000-00-000000', '디티브아시티거', 48);
+update public.site_settings
+set shipping_fee = 3000, free_shipping_threshold = 100000, bank_name = '국민은행',
+    bank_account = '000000-00-000000', bank_holder = '디티브아시티거', payment_due_hours = 48
+where id = 1;
 
 -- Catalog ----------------------------------------------------------------------------------------
 

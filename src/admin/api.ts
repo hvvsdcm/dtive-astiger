@@ -5,8 +5,14 @@ import { imageResize } from '@/lib/imageResize';
 import { rpcErrorMessage } from '@/lib/rpcErrors';
 import { supabase } from '@/lib/supabase';
 import type { Database } from '@/types/database';
-import type { ProductStatus } from '@/types/domain';
-import type { CategoryValues, ProductValues, VariantRowValues } from './schemas';
+import type { OrderStatus, ProductStatus } from '@/types/domain';
+import type {
+  CategoryValues,
+  ProductValues,
+  SectionValues,
+  SettingsValues,
+  VariantRowValues,
+} from './schemas';
 
 type Tables = Database['public']['Tables'];
 export type ProductRow = Tables['products']['Row'];
@@ -433,4 +439,569 @@ export async function deleteCategory(category: CategoryRow): Promise<void> {
   if (category.image_path) {
     await removeOwnedImages([category.image_path], category.id).catch(() => undefined);
   }
+}
+
+// Search ------------------------------------------------------------------------------------------
+
+/**
+ * Free text for an `ilike` inside a PostgREST `or=(…)`: drops wildcards and the characters that
+ * delimit or quote filter values, keeps "@", "." and "-" so e-mail addresses and order numbers match.
+ */
+export function adminSearchTerm(raw: string | null | undefined): string {
+  return (raw ?? '')
+    .replace(/[%_*,()"'\\:]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 60);
+}
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export const isUuid = (value: string | null | undefined): value is string =>
+  typeof value === 'string' && UUID_PATTERN.test(value);
+
+/** "YYYY-MM-DD" (a day in Asia/Seoul) → the instant it starts, offset by `days`. */
+function seoulDayStart(day: string, days = 0): string {
+  const date = new Date(`${day}T00:00:00+09:00`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString();
+}
+
+// Orders ------------------------------------------------------------------------------------------
+
+export type Order = Tables['orders']['Row'];
+export type OrderItem = Tables['order_items']['Row'];
+export type OrderEvent = Tables['order_events']['Row'];
+
+/** Order list tab: a status, every order, or open cancel requests (paid/preparing with a request). */
+export type AdminOrderTab = OrderStatus | 'all' | 'cancel_requested';
+
+export type AdminOrderFilters = {
+  status: AdminOrderTab;
+  /** Order number, recipient, depositor, or the orderer's name / e-mail. */
+  q: string;
+  /** Inclusive "YYYY-MM-DD" days (Asia/Seoul); '' for open ends. */
+  from: string;
+  to: string;
+  /** profiles.id to list one customer's orders; '' for everyone. */
+  customer: string;
+  page: number;
+};
+
+export type AdminOrderListItem = Pick<
+  Order,
+  | 'id'
+  | 'order_no'
+  | 'status'
+  | 'total'
+  | 'created_at'
+  | 'depositor_name'
+  | 'recipient'
+  | 'payment_due_at'
+  | 'cancel_requested_at'
+  | 'user_id'
+> & {
+  /** Orderer's current name; null once the account is deleted. */
+  customerName: string | null;
+  /** "First product name" plus the number of other lines. */
+  firstItem: string;
+  otherItems: number;
+  /** Still pending after the payment deadline (as of the fetch); the expiry job has not run yet. */
+  paymentOverdue: boolean;
+};
+
+const ORDER_LIST_COLUMNS =
+  'id, order_no, status, total, created_at, depositor_name, recipient, payment_due_at, cancel_requested_at, user_id, customer:profiles(name), items:order_items(product_name)';
+
+type OrderListRow = Omit<
+  AdminOrderListItem,
+  'customerName' | 'firstItem' | 'otherItems' | 'paymentOverdue'
+> & {
+  customer: { name: string } | null;
+  items: { product_name: string }[];
+};
+
+function toOrderListItem({ customer, items, ...row }: OrderListRow): AdminOrderListItem {
+  return {
+    ...row,
+    customerName: customer?.name ?? null,
+    firstItem: items[0]?.product_name ?? '',
+    otherItems: Math.max(0, items.length - 1),
+    paymentOverdue: row.status === 'pending_payment' && Date.parse(row.payment_due_at) < Date.now(),
+  };
+}
+
+/** Ids of customers whose name or e-mail contains `term` (for the order search). */
+async function matchingCustomerIds(term: string): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id')
+    .or(`name.ilike.%${term}%,email.ilike.%${term}%`)
+    .limit(100);
+  if (error) throw error;
+  return data.map((row) => row.id);
+}
+
+export async function fetchAdminOrders(
+  filters: AdminOrderFilters,
+): Promise<{ items: AdminOrderListItem[]; total: number }> {
+  const from = (filters.page - 1) * ADMIN_PAGE_SIZE;
+  let query = supabase
+    .from('orders')
+    .select(ORDER_LIST_COLUMNS, { count: 'exact' })
+    .order('created_at', { ascending: false })
+    .order('id')
+    .order('id', { referencedTable: 'order_items' })
+    .range(from, from + ADMIN_PAGE_SIZE - 1);
+
+  if (filters.status === 'cancel_requested') {
+    query = query.not('cancel_requested_at', 'is', null).in('status', ['paid', 'preparing']);
+  } else if (filters.status !== 'all') {
+    query = query.eq('status', filters.status);
+  }
+  if (filters.from) query = query.gte('created_at', seoulDayStart(filters.from));
+  if (filters.to) query = query.lt('created_at', seoulDayStart(filters.to, 1));
+  if (isUuid(filters.customer)) query = query.eq('user_id', filters.customer);
+
+  const term = adminSearchTerm(filters.q);
+  if (term) {
+    const clauses = [
+      `order_no.ilike.%${term}%`,
+      `recipient.ilike.%${term}%`,
+      `depositor_name.ilike.%${term}%`,
+    ];
+    const ids = await matchingCustomerIds(term);
+    if (ids.length) clauses.push(`user_id.in.(${ids.join(',')})`);
+    query = query.or(clauses.join(','));
+  }
+
+  const { data, error, count } = await query;
+  if (error) throw error;
+  return { items: (data as OrderListRow[]).map(toOrderListItem), total: count ?? 0 };
+}
+
+/** Newest orders for the dashboard. */
+export async function fetchRecentOrders(limit = 8): Promise<AdminOrderListItem[]> {
+  const { data, error } = await supabase
+    .from('orders')
+    .select(ORDER_LIST_COLUMNS)
+    .order('created_at', { ascending: false })
+    .order('id', { referencedTable: 'order_items' })
+    .limit(limit);
+  if (error) throw error;
+  return (data as OrderListRow[]).map(toOrderListItem);
+}
+
+/** Paid/preparing orders whose customer asked to cancel. */
+export async function fetchCancelRequestCount(): Promise<number> {
+  const { count, error } = await supabase
+    .from('orders')
+    .select('id', { count: 'exact', head: true })
+    .not('cancel_requested_at', 'is', null)
+    .in('status', ['paid', 'preparing']);
+  if (error) throw error;
+  return count ?? 0;
+}
+
+export type AdminOrderDetail = Order & {
+  items: OrderItem[];
+  events: OrderEvent[];
+  /** Orderer's profile; null when the account was deleted (the order keeps its snapshots). */
+  customer: { id: string; name: string; email: string; phone: string | null } | null;
+};
+
+/** Order with lines, events (oldest first) and orderer, or null when the id does not exist. */
+export async function fetchAdminOrder(id: string): Promise<AdminOrderDetail | null> {
+  if (!isUuid(id)) return null;
+  const { data, error } = await supabase
+    .from('orders')
+    .select(
+      '*, items:order_items(*), events:order_events(*), customer:profiles(id, name, email, phone)',
+    )
+    .eq('id', id)
+    .order('id', { referencedTable: 'order_items' })
+    .order('created_at', { referencedTable: 'order_events' })
+    .order('id', { referencedTable: 'order_events' })
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+/** State change through admin_update_order_status (the server checks the transition table). */
+export async function updateOrderStatus(
+  orderId: string,
+  status: OrderStatus,
+  note: string,
+): Promise<void> {
+  const { error } = await supabase.rpc('admin_update_order_status', {
+    p_order_id: orderId,
+    p_status: status,
+    p_note: note,
+  });
+  if (error) throw error;
+}
+
+/** paid/preparing → shipped with the waybill, or a waybill correction on a shipped order. */
+export async function setOrderTracking(
+  orderId: string,
+  carrier: string,
+  trackingNo: string,
+): Promise<void> {
+  const { error } = await supabase.rpc('admin_set_tracking', {
+    p_order_id: orderId,
+    p_carrier: carrier,
+    p_tracking_no: trackingNo,
+  });
+  if (error) throw error;
+}
+
+/** Internal memo (orders.admin_note is one of the three columns admins may update directly). */
+export async function saveAdminNote(orderId: string, note: string): Promise<void> {
+  const { error } = await supabase
+    .from('orders')
+    .update({ admin_note: note })
+    .eq('id', orderId)
+    .select('id')
+    .single();
+  if (error) throw error;
+}
+
+/** Cancels pending orders past their payment deadline; returns how many were cancelled. */
+export async function expireUnpaidOrders(): Promise<number> {
+  const { data, error } = await supabase.rpc('expire_unpaid_orders');
+  if (error) throw error;
+  return data;
+}
+
+// Customers ---------------------------------------------------------------------------------------
+
+export type AdminCustomer = {
+  id: string;
+  email: string;
+  name: string;
+  phone: string | null;
+  createdAt: string;
+  marketingAgreedAt: string | null;
+  orderCount: number;
+};
+
+export type AdminCustomerFilters = { q: string; page: number };
+
+/** Profiles, newest first. `q` matches e-mail, name, or phone digits (hyphens ignored). */
+export async function fetchAdminCustomers(
+  filters: AdminCustomerFilters,
+): Promise<{ items: AdminCustomer[]; total: number }> {
+  const from = (filters.page - 1) * ADMIN_PAGE_SIZE;
+  let query = supabase
+    .from('profiles')
+    .select('id, email, name, phone, created_at, marketing_agreed_at, orders(count)', {
+      count: 'exact',
+    })
+    .order('created_at', { ascending: false })
+    .order('id')
+    .range(from, from + ADMIN_PAGE_SIZE - 1);
+
+  const term = adminSearchTerm(filters.q);
+  if (term) {
+    const clauses = [`email.ilike.%${term}%`, `name.ilike.%${term}%`];
+    const digits = term.replace(/[\s-]/g, '');
+    if (/^\d{3,}$/.test(digits)) clauses.push(`phone.ilike.%${digits}%`);
+    query = query.or(clauses.join(','));
+  }
+
+  const { data, error, count } = await query;
+  if (error) throw error;
+  return {
+    total: count ?? 0,
+    items: data.map((row) => ({
+      id: row.id,
+      email: row.email,
+      name: row.name,
+      phone: row.phone,
+      createdAt: row.created_at,
+      marketingAgreedAt: row.marketing_agreed_at,
+      orderCount: row.orders[0]?.count ?? 0,
+    })),
+  };
+}
+
+export type AdminCustomerDetail = Omit<AdminCustomer, 'orderCount'> & {
+  orders: Pick<Order, 'id' | 'order_no' | 'status' | 'total' | 'created_at'>[];
+};
+
+export const CUSTOMER_RECENT_ORDERS = 10;
+
+/** One profile with its newest orders, or null when the id does not exist. */
+export async function fetchAdminCustomer(id: string): Promise<AdminCustomerDetail | null> {
+  if (!isUuid(id)) return null;
+  const { data, error } = await supabase
+    .from('profiles')
+    .select(
+      'id, email, name, phone, created_at, marketing_agreed_at, orders(id, order_no, status, total, created_at)',
+    )
+    .eq('id', id)
+    .order('created_at', { referencedTable: 'orders', ascending: false })
+    .limit(CUSTOMER_RECENT_ORDERS, { referencedTable: 'orders' })
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  return {
+    id: data.id,
+    email: data.email,
+    name: data.name,
+    phone: data.phone,
+    createdAt: data.created_at,
+    marketingAgreedAt: data.marketing_agreed_at,
+    orders: data.orders,
+  };
+}
+
+// Home sections -----------------------------------------------------------------------------------
+
+export type HomeSectionRow = Tables['home_sections']['Row'];
+
+export type LookbookItemValue = { imagePath: string; caption: string; href: string };
+
+const lookbookItemsSchema = z.array(
+  z.object({
+    image_path: z.string(),
+    caption: z.string().catch(''),
+    href: z.string().catch(''),
+  }),
+);
+
+/** Lookbook items of a stored section; malformed jsonb reads as no items. */
+export function lookbookItems(row: Pick<HomeSectionRow, 'items'>): LookbookItemValue[] {
+  const parsed = lookbookItemsSchema.safeParse(row.items);
+  if (!parsed.success) return [];
+  return parsed.data.map((item) => ({
+    imagePath: item.image_path,
+    caption: item.caption,
+    href: item.href,
+  }));
+}
+
+/** Every stored image path a section references. */
+export function sectionImagePaths(
+  row: Pick<HomeSectionRow, 'image_path' | 'image_path_2' | 'items'>,
+): string[] {
+  return [
+    row.image_path,
+    row.image_path_2,
+    ...lookbookItems(row).map((item) => item.imagePath),
+  ].filter((path): path is string => Boolean(path));
+}
+
+/** All sections (inactive included) in display order. */
+export async function fetchAdminSections(): Promise<HomeSectionRow[]> {
+  const { data, error } = await supabase
+    .from('home_sections')
+    .select('*')
+    .order('sort')
+    .order('created_at');
+  if (error) throw error;
+  return data;
+}
+
+function sectionColumns(values: SectionValues) {
+  const base = {
+    kind: values.kind,
+    title: values.title,
+    link_label: values.linkLabel,
+    link_href: values.linkHref,
+    image_path: null as string | null,
+    image_path_2: null as string | null,
+    category_id: null as string | null,
+    product_ids: [] as string[],
+    items: [] as { image_path: string; caption: string; href: string }[],
+  };
+  switch (values.kind) {
+    case 'hero':
+      return { ...base, image_path: values.imagePath };
+    case 'split':
+      return { ...base, image_path: values.imagePath, image_path_2: values.imagePath2 };
+    case 'collection':
+      return { ...base, category_id: values.categoryId || null, product_ids: values.productIds };
+    case 'lookbook':
+      return {
+        ...base,
+        items: values.items.map((item) => ({
+          image_path: item.imagePath,
+          caption: item.caption,
+          href: item.href,
+        })),
+      };
+  }
+}
+
+export type SaveSectionInput = {
+  id: string;
+  isNew: boolean;
+  values: SectionValues;
+  isActive: boolean;
+  /** Sort for a new section (end of the list). */
+  sort: number;
+  /** Paths the stored row referenced; those no longer used are removed (own folder only). */
+  previousPaths: string[];
+};
+
+export async function saveSection(input: SaveSectionInput): Promise<void> {
+  const row = { ...sectionColumns(input.values), is_active: input.isActive };
+  const { error } = input.isNew
+    ? await supabase.from('home_sections').insert({ ...row, id: input.id, sort: input.sort })
+    : await supabase.from('home_sections').update(row).eq('id', input.id);
+  if (error) throw error;
+  const kept = new Set(sectionImagePaths(row));
+  const dropped = input.previousPaths.filter((path) => !kept.has(path));
+  if (dropped.length) await removeOwnedImages(dropped, input.id).catch(() => undefined);
+}
+
+export async function setSectionActive(id: string, isActive: boolean): Promise<void> {
+  const { error } = await supabase
+    .from('home_sections')
+    .update({ is_active: isActive })
+    .eq('id', id);
+  if (error) throw error;
+}
+
+/** Writes sort = position for every section whose sort changes. */
+export async function reorderSections(ordered: { id: string; sort: number }[]): Promise<void> {
+  const changed = ordered.flatMap((item, index) =>
+    item.sort === index ? [] : [{ ...item, index }],
+  );
+  const results = await Promise.all(
+    changed.map((item) =>
+      supabase.from('home_sections').update({ sort: item.index }).eq('id', item.id),
+    ),
+  );
+  const failed = results.find((result) => result.error);
+  if (failed?.error) throw failed.error;
+}
+
+/** Deletes a section, then the images it uploaded into its own folder. */
+export async function deleteSection(section: HomeSectionRow): Promise<void> {
+  const { error } = await supabase.from('home_sections').delete().eq('id', section.id);
+  if (error) throw error;
+  await removeOwnedImages(sectionImagePaths(section), section.id).catch(() => undefined);
+}
+
+export type PickedProduct = {
+  id: string;
+  name: string;
+  status: ProductStatus;
+  imagePath: string | null;
+};
+
+const PICK_COLUMNS = 'id, name, status, images:product_images(storage_path, sort)';
+
+type PickRow = {
+  id: string;
+  name: string;
+  status: ProductStatus;
+  images: { storage_path: string; sort: number }[];
+};
+
+const toPicked = (row: PickRow): PickedProduct => ({
+  id: row.id,
+  name: row.name,
+  status: row.status,
+  imagePath: [...row.images].sort((a, b) => a.sort - b.sort)[0]?.storage_path ?? null,
+});
+
+/** Products for a collection picker, matched by name or slug (10 newest). */
+export async function searchPickableProducts(q: string): Promise<PickedProduct[]> {
+  const term = adminSearchTerm(q);
+  let query = supabase
+    .from('products')
+    .select(PICK_COLUMNS)
+    .neq('status', 'archived')
+    .order('created_at', { ascending: false })
+    .limit(10);
+  if (term) query = query.or(`name.ilike.%${term}%,slug.ilike.%${term}%`);
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data as PickRow[]).map(toPicked);
+}
+
+/** The given products in the given order (missing ids are dropped). */
+export async function fetchPickedProducts(ids: string[]): Promise<PickedProduct[]> {
+  if (ids.length === 0) return [];
+  const { data, error } = await supabase.from('products').select(PICK_COLUMNS).in('id', ids);
+  if (error) throw error;
+  const rows = (data as PickRow[]).map(toPicked);
+  return ids.flatMap((id) => rows.find((row) => row.id === id) ?? []);
+}
+
+// Settings ----------------------------------------------------------------------------------------
+
+/** Updates the single site_settings row; updated_by/updated_at are set by triggers. */
+export async function saveSettings(values: SettingsValues): Promise<void> {
+  const { error } = await supabase
+    .from('site_settings')
+    .update({
+      shipping_fee: values.shippingFee,
+      free_shipping_threshold: values.freeShippingThreshold,
+      bank_name: values.bankName,
+      bank_account: values.bankAccount,
+      bank_holder: values.bankHolder,
+      payment_due_hours: values.paymentDueHours,
+    })
+    .eq('id', 1)
+    .select('id')
+    .single();
+  if (error) throw error;
+}
+
+// Audit log ---------------------------------------------------------------------------------------
+
+export type AuditLogRow = Tables['audit_logs']['Row'];
+
+export const AUDIT_TABLES = [
+  'orders',
+  'products',
+  'product_variants',
+  'product_images',
+  'categories',
+  'home_sections',
+  'site_settings',
+  'profiles',
+] as const;
+
+export type AuditTable = (typeof AUDIT_TABLES)[number];
+
+export type AuditFilters = { table: AuditTable | 'all'; page: number };
+
+export type AuditEntry = AuditLogRow & {
+  /** E-mail of the acting user; null for system jobs or deleted accounts. */
+  actorEmail: string | null;
+};
+
+export async function fetchAuditLogs(
+  filters: AuditFilters,
+): Promise<{ items: AuditEntry[]; total: number }> {
+  const from = (filters.page - 1) * ADMIN_PAGE_SIZE;
+  let query = supabase
+    .from('audit_logs')
+    .select('*', { count: 'exact' })
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
+    .range(from, from + ADMIN_PAGE_SIZE - 1);
+  if (filters.table !== 'all') query = query.eq('table_name', filters.table);
+  const { data, error, count } = await query;
+  if (error) throw error;
+
+  const actorIds = [...new Set(data.flatMap((row) => (row.actor_id ? [row.actor_id] : [])))];
+  const emails = new Map<string, string>();
+  if (actorIds.length) {
+    const profiles = await supabase.from('profiles').select('id, email').in('id', actorIds);
+    if (profiles.error) throw profiles.error;
+    for (const profile of profiles.data) emails.set(profile.id, profile.email);
+  }
+  return {
+    total: count ?? 0,
+    items: data.map((row) => ({
+      ...row,
+      actorEmail: row.actor_id ? (emails.get(row.actor_id) ?? null) : null,
+    })),
+  };
 }

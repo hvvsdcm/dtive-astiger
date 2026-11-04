@@ -83,7 +83,8 @@ export default defineConfig(({ command, mode }) => {
       alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
     },
     html: command === 'serve' ? { cspNonce: DEV_NONCE } : undefined,
-    server: { port: 5173, strictPort: true },
+    // Must match supabase/config.toml [auth] site_url / additional_redirect_urls.
+    server: { host: '127.0.0.1', port: 5174, strictPort: true },
     preview: { port: 4173, strictPort: true },
     test: {
       environment: 'jsdom',

@@ -188,3 +188,121 @@ export const categorySchema = z.object({
 
 export type CategoryFormInput = z.input<typeof categorySchema>;
 export type CategoryValues = z.output<typeof categorySchema>;
+
+/**
+ * Path inside this app ("/shop/women", "/lookbook?season=aw26"). Other origins ("//x", "https:"),
+ * schemes ("javascript:"), backslashes, spaces and control characters are rejected.
+ */
+export function isInternalHref(value: string): boolean {
+  return /^\/(?![/\\])[^\s\\\p{Cc}]*$/u.test(value);
+}
+
+const hrefSchema = z
+  .string()
+  .trim()
+  .max(200, '200자 이내로 입력하세요')
+  .refine((v) => v === '' || isInternalHref(v), '/로 시작하는 사이트 내부 경로만 쓸 수 있습니다');
+
+const sectionBase = {
+  title: z.string().trim().max(80, '80자 이내로 입력하세요'),
+  linkLabel: z.string().trim().max(30, '30자 이내로 입력하세요'),
+  linkHref: hrefSchema,
+};
+
+const requiredImage = z.string('이미지를 올리세요').min(1, '이미지를 올리세요');
+
+export const LOOKBOOK_MAX_ITEMS = 12;
+export const COLLECTION_MAX_PRODUCTS = 8;
+
+/** Home section per kind (hero/split/collection/lookbook); image paths are "banners/…" or "products/…". */
+export const sectionSchema = z
+  .discriminatedUnion('kind', [
+    z.object({ kind: z.literal('hero'), ...sectionBase, imagePath: requiredImage }),
+    z.object({
+      kind: z.literal('split'),
+      ...sectionBase,
+      imagePath: requiredImage,
+      imagePath2: z.string().nullable(),
+    }),
+    z.object({
+      kind: z.literal('collection'),
+      ...sectionBase,
+      categoryId: z.string(),
+      productIds: z
+        .array(z.uuid())
+        .max(COLLECTION_MAX_PRODUCTS, `상품은 ${COLLECTION_MAX_PRODUCTS}개까지 지정할 수 있습니다`),
+    }),
+    z.object({
+      kind: z.literal('lookbook'),
+      ...sectionBase,
+      items: z
+        .array(
+          z.object({
+            imagePath: z.string().min(1),
+            caption: z.string().trim().max(80, '80자 이내로 입력하세요'),
+            href: hrefSchema,
+          }),
+        )
+        .min(1, '이미지를 올리세요')
+        .max(LOOKBOOK_MAX_ITEMS, `${LOOKBOOK_MAX_ITEMS}장까지 올릴 수 있습니다`),
+    }),
+  ])
+  .superRefine((value, ctx) => {
+    if (value.linkLabel !== '' && value.linkHref === '') {
+      ctx.addIssue({ code: 'custom', path: ['linkHref'], message: '링크 경로를 입력하세요' });
+    }
+    if (value.linkLabel === '' && value.linkHref !== '') {
+      ctx.addIssue({ code: 'custom', path: ['linkLabel'], message: '링크 문구를 입력하세요' });
+    }
+    if (value.kind === 'collection' && !value.categoryId && value.productIds.length === 0) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['categoryId'],
+        message: '카테고리나 상품을 지정하세요',
+      });
+    }
+  });
+
+export type SectionInput = z.input<typeof sectionSchema>;
+export type SectionValues = z.output<typeof sectionSchema>;
+
+/** Optional whole won amount above zero; '' means none. */
+const positiveWonOrNone = z
+  .string()
+  .trim()
+  .regex(/^(\d{1,9})?$/, '0보다 큰 정수로 입력하세요')
+  .transform((v) => (v === '' ? null : Number(v)))
+  .refine((v) => v === null || v > 0, '0보다 큰 정수로 입력하세요');
+
+/** site_settings (single row) as edited on /admin/settings. */
+export const settingsSchema = z.object({
+  shippingFee: wonSchema,
+  freeShippingThreshold: positiveWonOrNone,
+  bankName: z.string().trim().min(1, '은행을 입력하세요').max(30, '30자 이내로 입력하세요'),
+  bankAccount: z
+    .string()
+    .trim()
+    .regex(/^[0-9-]{6,30}$/, '숫자와 하이픈 6–30자로 입력하세요'),
+  bankHolder: z.string().trim().min(1, '예금주를 입력하세요').max(30, '30자 이내로 입력하세요'),
+  paymentDueHours: z
+    .string()
+    .trim()
+    .regex(/^\d{1,3}$/, '1–168 사이 정수로 입력하세요')
+    .transform(Number)
+    .refine((v) => v >= 1 && v <= 168, '1–168 사이 정수로 입력하세요'),
+});
+
+export type SettingsFormInput = z.input<typeof settingsSchema>;
+export type SettingsValues = z.output<typeof settingsSchema>;
+
+/** Carrier code (CARRIERS) and waybill number, same rule as admin_set_tracking. */
+export const trackingSchema = z.object({
+  carrier: z.string().min(1, '택배사를 선택하세요'),
+  trackingNo: z
+    .string()
+    .trim()
+    .regex(/^[0-9A-Za-z-]{1,40}$/, '영문, 숫자, 하이픈 40자 이내로 입력하세요'),
+});
+
+export type TrackingFormInput = z.input<typeof trackingSchema>;
+export type TrackingValues = z.output<typeof trackingSchema>;

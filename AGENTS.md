@@ -7,7 +7,7 @@ The full plan and every contract (tokens, routes, schema, interfaces, security) 
 ## Commands
 
 ```sh
-npm run dev          # http://localhost:5173 (needs .env.local, see .env.example; `supabase start` first)
+npm run dev          # http://127.0.0.1:5174 (needs .env.local, see .env.example; `supabase start` first)
 npm run typecheck    # tsc -b --noEmit
 npm run lint         # eslint .
 npm run format       # prettier --check .
