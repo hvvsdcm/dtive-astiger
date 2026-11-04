@@ -183,7 +183,7 @@ const lookbookItemSchema = z.object({
   href: z.string().catch(''),
 });
 
-export type LookbookItem = { imagePath: string; caption: string; href: string };
+type LookbookItem = { imagePath: string; caption: string; href: string };
 
 export type HomeSection = {
   id: string;

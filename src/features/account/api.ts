@@ -11,12 +11,7 @@ export type Profile = Tables<'profiles'>;
 export type Address = Tables<'addresses'>;
 
 /** Orders in these states block account deletion (delete_my_account raises ACTIVE_ORDERS). */
-export const ACTIVE_ORDER_STATUSES: OrderStatus[] = [
-  'pending_payment',
-  'paid',
-  'preparing',
-  'shipped',
-];
+const ACTIVE_ORDER_STATUSES: OrderStatus[] = ['pending_payment', 'paid', 'preparing', 'shipped'];
 
 /* ---------------------------------------------------------------- profile */
 
@@ -64,7 +59,7 @@ export async function verifyPassword(email: string, password: string): Promise<b
   throw error;
 }
 
-export async function countActiveOrders(userId: string): Promise<number> {
+async function countActiveOrders(userId: string): Promise<number> {
   const { count, error } = await supabase
     .from('orders')
     .select('id', { count: 'exact', head: true })

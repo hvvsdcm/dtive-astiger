@@ -25,10 +25,12 @@ function contentSecurityPolicy(supabaseUrl: string | undefined, dev: boolean): s
   const supabaseHttp = supabase ? [supabase.http] : [];
   const supabaseWs = supabase ? [supabase.ws] : [];
   const nonce = dev ? [`'nonce-${DEV_NONCE}'`] : [];
-  // On an http dev origin the postcode script frames http://postcode.map.* (then 302 → https).
-  const devPostcodeFrames = dev
-    ? ['http://postcode.map.kakao.com', 'http://postcode.map.daum.net']
-    : [];
+  // On an http origin (dev server, or a local build/preview against the http local Supabase) the
+  // postcode script frames http://postcode.map.* (then 302 → https). Production (https) never does.
+  const httpPostcodeFrames =
+    dev || !supabase?.secure
+      ? ['http://postcode.map.kakao.com', 'http://postcode.map.daum.net']
+      : [];
 
   const directives: Directives = {
     'default-src': ["'self'"],
@@ -43,7 +45,7 @@ function contentSecurityPolicy(supabaseUrl: string | undefined, dev: boolean): s
     'frame-src': [
       'https://postcode.map.kakao.com',
       'https://postcode.map.daum.net',
-      ...devPostcodeFrames,
+      ...httpPostcodeFrames,
     ],
     'base-uri': ["'self'"],
     'form-action': ["'self'"],

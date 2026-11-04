@@ -9,12 +9,12 @@ import type { FreshVariant } from './reconcile';
 export type SiteSettings = Tables<'site_settings'>;
 export type Order = Tables<'orders'>;
 export type OrderItem = Tables<'order_items'>;
-export type OrderEvent = Tables<'order_events'>;
+type OrderEvent = Tables<'order_events'>;
 
 /* --------------------------------------------------------------- settings */
 
 /** The single site_settings row (raw), cached under qk.settings. */
-export async function fetchSiteSettings(): Promise<SiteSettings> {
+async function fetchSiteSettings(): Promise<SiteSettings> {
   const { data, error } = await supabase.from('site_settings').select('*').eq('id', 1).single();
   if (error) throw error;
   return data;
@@ -87,7 +87,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
   return data as CreateOrderResult;
 }
 
-export function isUuid(value: string | undefined): value is string {
+function isUuid(value: string | undefined): value is string {
   return value !== undefined && UUID.test(value);
 }
 
@@ -101,7 +101,7 @@ export type OrderListItem = Pick<
 export const ORDERS_PAGE_SIZE = 10;
 
 /** One page (0-based) of the signed-in user's orders, newest first. */
-export async function fetchMyOrders(
+async function fetchMyOrders(
   userId: string,
   page: number,
 ): Promise<{ items: OrderListItem[]; total: number }> {
@@ -132,7 +132,7 @@ export function useMyOrders(page: number) {
 export type OrderDetail = Order & { items: OrderItem[]; events: OrderEvent[] };
 
 /** An order the current user may read (RLS), or null when it does not exist or is not theirs. */
-export async function fetchOrder(id: string): Promise<OrderDetail | null> {
+async function fetchOrder(id: string): Promise<OrderDetail | null> {
   if (!isUuid(id)) return null;
   const { data, error } = await supabase
     .from('orders')

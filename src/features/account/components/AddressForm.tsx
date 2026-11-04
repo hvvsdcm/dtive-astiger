@@ -149,7 +149,15 @@ function PostcodeSearch({ onSelect }: { onSelect: (address: SelectedAddress) => 
   const container = useCallback(
     (element: HTMLDivElement | null) => {
       if (!element) return;
-      embedPostcode(element, onSelect).catch(() => setFailed(true));
+      // Ref cleanup (also run by StrictMode) must not leave a second widget in the same element.
+      const controller = new AbortController();
+      embedPostcode(element, onSelect, controller.signal).catch(() => {
+        if (!controller.signal.aborted) setFailed(true);
+      });
+      return () => {
+        controller.abort();
+        element.replaceChildren();
+      };
     },
     [onSelect],
   );

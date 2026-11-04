@@ -8,7 +8,7 @@
 const SCRIPT_URL = 'https://t1.kakaocdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
 
 /** Fields of the `oncomplete` payload this app uses. */
-export type PostcodeResult = {
+type PostcodeResult = {
   zonecode: string;
   address: string;
   roadAddress: string;
@@ -44,7 +44,7 @@ function loadedConstructor(): PostcodeConstructor | undefined {
   return window.kakao?.Postcode ?? window.daum?.Postcode;
 }
 
-export function loadPostcode(): Promise<PostcodeConstructor> {
+function loadPostcode(): Promise<PostcodeConstructor> {
   const ready = loadedConstructor();
   if (ready) return Promise.resolve(ready);
   loading ??= new Promise<PostcodeConstructor>((resolve, reject) => {
@@ -69,7 +69,7 @@ export function loadPostcode(): Promise<PostcodeConstructor> {
  * Road address (or the lot address when the user picked one), with the legal-dong and building
  * name appended the way the official guide recommends for road addresses.
  */
-export function toSelectedAddress(data: PostcodeResult): SelectedAddress {
+function toSelectedAddress(data: PostcodeResult): SelectedAddress {
   if (data.userSelectedType === 'J') {
     return { postalCode: data.zonecode, address1: data.jibunAddress || data.address };
   }
@@ -84,12 +84,17 @@ export function toSelectedAddress(data: PostcodeResult): SelectedAddress {
   };
 }
 
-/** Renders the search UI into `element`; calls `onSelect` once an address is picked. */
+/**
+ * Renders the search UI into `element`; calls `onSelect` once an address is picked. Nothing is
+ * embedded when `signal` aborts before the script has loaded (React ref cleanup).
+ */
 export async function embedPostcode(
   element: HTMLElement,
   onSelect: (address: SelectedAddress) => void,
+  signal?: AbortSignal,
 ): Promise<void> {
   const Postcode = await loadPostcode();
+  if (signal?.aborted) return;
   new Postcode({
     oncomplete: (data) => onSelect(toSelectedAddress(data)),
     width: '100%',

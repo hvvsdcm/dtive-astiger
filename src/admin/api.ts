@@ -15,7 +15,7 @@ import type {
 } from './schemas';
 
 type Tables = Database['public']['Tables'];
-export type ProductRow = Tables['products']['Row'];
+type ProductRow = Tables['products']['Row'];
 export type CategoryRow = Tables['categories']['Row'];
 
 /** Admin category list (inactive included). Not in qk: the store's qk.categories is active-only. */
@@ -211,7 +211,7 @@ export async function fetchAdminProducts(
   };
 }
 
-export type AdminVariant = Tables['product_variants']['Row'];
+type AdminVariant = Tables['product_variants']['Row'];
 
 export type AdminProduct = ProductRow & {
   images: Tables['product_images']['Row'][];
@@ -447,7 +447,7 @@ export async function deleteCategory(category: CategoryRow): Promise<void> {
  * Free text for an `ilike` inside a PostgREST `or=(…)`: drops wildcards and the characters that
  * delimit or quote filter values, keeps "@", "." and "-" so e-mail addresses and order numbers match.
  */
-export function adminSearchTerm(raw: string | null | undefined): string {
+function adminSearchTerm(raw: string | null | undefined): string {
   return (raw ?? '')
     .replace(/[%_*,()"'\\:]/g, ' ')
     .replace(/\s+/g, ' ')
@@ -469,9 +469,9 @@ function seoulDayStart(day: string, days = 0): string {
 
 // Orders ------------------------------------------------------------------------------------------
 
-export type Order = Tables['orders']['Row'];
-export type OrderItem = Tables['order_items']['Row'];
-export type OrderEvent = Tables['order_events']['Row'];
+type Order = Tables['orders']['Row'];
+type OrderItem = Tables['order_items']['Row'];
+type OrderEvent = Tables['order_events']['Row'];
 
 /** Order list tab: a status, every order, or open cancel requests (paid/preparing with a request). */
 export type AdminOrderTab = OrderStatus | 'all' | 'cancel_requested';
@@ -954,7 +954,7 @@ export async function saveSettings(values: SettingsValues): Promise<void> {
 
 // Audit log ---------------------------------------------------------------------------------------
 
-export type AuditLogRow = Tables['audit_logs']['Row'];
+type AuditLogRow = Tables['audit_logs']['Row'];
 
 export const AUDIT_TABLES = [
   'orders',

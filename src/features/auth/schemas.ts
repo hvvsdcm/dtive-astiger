@@ -58,6 +58,7 @@ export const signupSchema = z
     phone: optionalPhoneSchema,
     termsAgreed: z.literal(true, '필수 항목에 동의하세요'),
     privacyAgreed: z.literal(true, '필수 항목에 동의하세요'),
+    ageConfirmed: z.literal(true, '필수 항목에 동의하세요'),
     marketingAgreed: z.boolean(),
   })
   .refine((values) => values.password === values.passwordConfirm, {

@@ -1,4 +1,4 @@
-export const RPC_ERROR_MESSAGES = {
+const RPC_ERROR_MESSAGES = {
   AUTH_REQUIRED: '로그인이 필요합니다',
   OUT_OF_STOCK: '재고가 부족한 상품이 있습니다',
   ITEM_UNAVAILABLE: '판매 중이 아닌 상품이 있습니다',

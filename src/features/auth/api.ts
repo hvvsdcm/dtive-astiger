@@ -65,6 +65,7 @@ export async function signUp(values: SignupValues) {
         phone: values.phone,
         terms_agreed: true,
         privacy_agreed: true,
+        age_confirmed: true,
         marketing_agreed: values.marketingAgreed,
       },
       emailRedirectTo: authRedirectUrl('auth/confirmed'),

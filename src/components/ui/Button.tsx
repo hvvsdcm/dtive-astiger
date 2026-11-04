@@ -3,8 +3,8 @@ import { Link, type LinkProps } from 'react-router';
 import { cn } from './cn';
 import { Spinner } from './Spinner';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
-export type ButtonSize = 'md' | 'sm';
+type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
+type ButtonSize = 'md' | 'sm';
 
 type StyleProps = { variant?: ButtonVariant; size?: ButtonSize; fullWidth?: boolean };
 

@@ -2,7 +2,7 @@
 export type Block =
   string | { list: string[]; ordered?: boolean } | { table: { head: string[]; rows: string[][] } };
 
-export type DocSection = { id: string; title: string; blocks: Block[] };
+type DocSection = { id: string; title: string; blocks: Block[] };
 
 export type LegalDocument = {
   title: string;

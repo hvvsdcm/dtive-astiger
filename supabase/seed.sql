@@ -18,14 +18,14 @@ values
     '00000000-0000-0000-0000-000000000000', 'a0000000-0000-4000-8000-000000000001', 'authenticated', 'authenticated',
     'admin@example.com', extensions.crypt('Admin1234!', extensions.gen_salt('bf')), now(),
     '{"provider":"email","providers":["email"]}',
-    '{"name":"관리자","terms_agreed":true,"privacy_agreed":true,"marketing_agreed":false}',
+    '{"name":"관리자","terms_agreed":true,"privacy_agreed":true,"age_confirmed":true,"marketing_agreed":false}',
     now(), now(), '', '', '', '', '', '', '', ''
   ),
   (
     '00000000-0000-0000-0000-000000000000', 'c0000000-0000-4000-8000-000000000002', 'authenticated', 'authenticated',
     'customer@example.com', extensions.crypt('Customer1234!', extensions.gen_salt('bf')), now(),
     '{"provider":"email","providers":["email"]}',
-    '{"name":"김고객","phone":"01012345678","terms_agreed":true,"privacy_agreed":true,"marketing_agreed":true}',
+    '{"name":"김고객","phone":"01012345678","terms_agreed":true,"privacy_agreed":true,"age_confirmed":true,"marketing_agreed":true}',
     now(), now(), '', '', '', '', '', '', '', ''
   );
 

@@ -28,7 +28,6 @@ import {
 import {
   PAGE_SIZE,
   buildCategoryTree,
-  isLatinLabel,
   imagesForColor,
   resolveCategory,
   type ProductCardData,
@@ -36,7 +35,7 @@ import {
   type ProductFilters,
 } from './model';
 
-export const categoriesQuery = queryOptions({
+const categoriesQuery = queryOptions({
   queryKey: qk.categories,
   queryFn: fetchCategories,
   staleTime: 5 * 60_000,
@@ -47,7 +46,7 @@ export const homeSectionsQuery = queryOptions({
   queryFn: fetchHomeSections,
 });
 
-export const useCategories = () => useQuery(categoriesQuery);
+const useCategories = () => useQuery(categoriesQuery);
 
 export type CatalogNavItem = NavItem & { imagePath?: string | null; children?: CatalogNavItem[] };
 
@@ -67,9 +66,7 @@ export function useStoreNav(): { nav: CatalogNavItem[] | null; failed: boolean }
         imagePath: child.imagePath,
       })),
     }));
-  // Keep the menu in one language: "Lookbook" next to English names, "룩북" next to Korean ones.
-  const lookbook = roots.every((root) => isLatinLabel(root.label)) ? 'Lookbook' : '룩북';
-  return { nav: [...roots, { label: lookbook, href: '/lookbook' }], failed: false };
+  return { nav: [...roots, { label: 'Lookbook', href: '/lookbook' }], failed: false };
 }
 
 /** Category for `/shop/:slug`: undefined while loading, null when unknown. */

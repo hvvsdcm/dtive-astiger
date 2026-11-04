@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { addressSchema } from '@/features/account/schemas';
 
 /** Shipping destination: a saved address (by id) or a new address typed at checkout. */
-export const shippingSchema = z.union([z.object({ addressId: z.uuid() }), addressSchema], {
+const shippingSchema = z.union([z.object({ addressId: z.uuid() }), addressSchema], {
   error: '배송지를 선택하세요',
 });
 

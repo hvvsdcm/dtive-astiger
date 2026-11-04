@@ -11,7 +11,7 @@ import { authErrorMessage, resendSignupEmail, signUp } from '../api';
 import { AuthShell, FormError } from '../components/AuthShell';
 import { PASSWORD_RULE, signupSchema, type SignupInput, type SignupValues } from '../schemas';
 
-const CONSENTS = ['termsAgreed', 'privacyAgreed', 'marketingAgreed'] as const;
+const CONSENTS = ['termsAgreed', 'privacyAgreed', 'ageConfirmed', 'marketingAgreed'] as const;
 
 export function SignupPage() {
   const [sentTo, setSentTo] = useState<string | null>(null);
@@ -30,9 +30,10 @@ export function SignupPage() {
       passwordConfirm: '',
       name: '',
       phone: '',
-      // Unchecked boxes hold `false`; the schema requires literal `true` for the two required ones.
+      // Unchecked boxes hold `false`; the schema requires literal `true` for the required ones.
       termsAgreed: false as unknown as true,
       privacyAgreed: false as unknown as true,
+      ageConfirmed: false as unknown as true,
       marketingAgreed: false,
     },
   });
@@ -57,7 +58,8 @@ export function SignupPage() {
 
   if (sentTo) return <SignupSent email={sentTo} />;
 
-  const consentError = errors.termsAgreed?.message ?? errors.privacyAgreed?.message;
+  const consentError =
+    errors.termsAgreed?.message ?? errors.privacyAgreed?.message ?? errors.ageConfirmed?.message;
 
   return (
     <AuthShell title="회원가입">
@@ -151,6 +153,12 @@ export function SignupPage() {
                 />
               }
               href="/privacy"
+            />
+            <Checkbox
+              id="signup-age"
+              label="[필수] 만 14세 이상입니다"
+              invalid={Boolean(errors.ageConfirmed)}
+              {...register('ageConfirmed')}
             />
             <Checkbox
               id="signup-marketing"

@@ -1,6 +1,6 @@
 -- Signup consent trigger, email sync, delete_my_account.
 begin;
-select plan(16);
+select plan(18);
 
 -- signup ----------------------------------------------------------------------------------------
 select throws_ok(
@@ -20,17 +20,30 @@ select throws_ok(
             '{"name":"x","terms_agreed":"true","privacy_agreed":"true"}')$$,
   'P0001', 'TERMS_REQUIRED', 'consents must be JSON booleans'
 );
+select throws_ok(
+  $$insert into auth.users (id, email, aud, role, raw_user_meta_data)
+    values ('33333333-3333-4333-8333-333333333333', 'noage@test.local', 'authenticated', 'authenticated',
+            '{"name":"x","terms_agreed":true,"privacy_agreed":true}')$$,
+  'P0001', 'TERMS_REQUIRED', 'signup without the age 14+ confirmation fails'
+);
+select throws_ok(
+  $$insert into auth.users (id, email, aud, role, raw_user_meta_data)
+    values ('33333333-3333-4333-8333-333333333333', 'under14@test.local', 'authenticated', 'authenticated',
+            '{"name":"x","terms_agreed":true,"privacy_agreed":true,"age_confirmed":false}')$$,
+  'P0001', 'TERMS_REQUIRED', 'signup with age_confirmed false fails'
+);
 
 insert into auth.users (id, email, aud, role, raw_user_meta_data) values
   ('11111111-1111-4111-8111-111111111111', 'u1@test.local', 'authenticated', 'authenticated',
-   '{"name":"유저1","phone":"010-1111-2222","terms_agreed":true,"privacy_agreed":true,"marketing_agreed":false}'),
+   '{"name":"유저1","phone":"010-1111-2222","terms_agreed":true,"privacy_agreed":true,"age_confirmed":true,"marketing_agreed":false}'),
   ('22222222-2222-4222-8222-222222222222', 'u2@test.local', 'authenticated', 'authenticated',
-   '{"name":"유저2","terms_agreed":true,"privacy_agreed":true,"marketing_agreed":true}');
+   '{"name":"유저2","terms_agreed":true,"privacy_agreed":true,"age_confirmed":true,"marketing_agreed":true}');
 
 select results_eq(
-  $$select email, name, phone, terms_agreed_at is not null, privacy_agreed_at is not null, marketing_agreed_at is null
+  $$select email, name, phone, terms_agreed_at is not null, privacy_agreed_at is not null,
+           age_confirmed_at is not null, marketing_agreed_at is null
       from public.profiles where id = '11111111-1111-4111-8111-111111111111'$$,
-  $$values ('u1@test.local'::text, '유저1'::text, '01011112222'::text, true, true, true)$$,
+  $$values ('u1@test.local'::text, '유저1'::text, '01011112222'::text, true, true, true, true)$$,
   'profile created from signup metadata (phone normalised, marketing off)'
 );
 select isnt((select marketing_agreed_at from public.profiles where id = '22222222-2222-4222-8222-222222222222'), null, 'marketing consent timestamped');

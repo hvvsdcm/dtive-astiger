@@ -93,7 +93,8 @@ export function Header({ nav, overlay = false }: HeaderProps) {
           <button
             type="button"
             className={cn(iconButton, 'relative')}
-            aria-label={`장바구니, ${count}개`}
+            // The visible count must be part of the accessible name (WCAG 2.5.3).
+            aria-label={count > 0 ? `장바구니 ${count}` : '장바구니'}
             onClick={openCart}
           >
             <Icon icon={ShoppingBag} />

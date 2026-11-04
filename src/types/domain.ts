@@ -85,5 +85,3 @@ export const CARRIERS = [
     trackUrl: (no: string) => `https://www.ilogen.com/web/personal/trace/${encodeURIComponent(no)}`,
   },
 ] as const satisfies readonly Carrier[];
-
-export type CarrierCode = (typeof CARRIERS)[number]['code'];

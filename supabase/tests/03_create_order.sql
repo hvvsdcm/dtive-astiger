@@ -5,7 +5,7 @@ select plan(28);
 -- fixture (as postgres) --------------------------------------------------------------------------
 insert into auth.users (id, email, aud, role, raw_user_meta_data) values
   ('11111111-1111-4111-8111-111111111111', 'u1@test.local', 'authenticated', 'authenticated',
-   '{"name":"유저1","terms_agreed":true,"privacy_agreed":true}');
+   '{"name":"유저1","terms_agreed":true,"privacy_agreed":true,"age_confirmed":true}');
 
 insert into public.site_settings (id, shipping_fee, free_shipping_threshold, bank_name, bank_account, bank_holder, payment_due_hours)
 values (1, 3000, 100000, '테스트은행', '123-456-789', '테스트', 48)

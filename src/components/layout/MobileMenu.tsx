@@ -2,9 +2,11 @@ import { Minus, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router';
 import type { NavItem } from '@/config/site';
+import { cn } from '@/components/ui/cn';
 import { Drawer } from '@/components/ui/Drawer';
 import { Icon } from '@/components/ui/Icon';
 import { useSession } from '@/features/auth/session';
+import { isLatinLabel } from '@/features/catalog/model';
 
 export type MobileMenuProps = {
   open: boolean;
@@ -12,7 +14,8 @@ export type MobileMenuProps = {
   nav: NavItem[];
 };
 
-const rowClass = 'flex h-12 w-full items-center justify-between label-caps text-sm';
+// Uppercase tracking (label-caps) is for latin labels only; Korean names stay as written.
+const rowClass = 'flex h-12 w-full items-center justify-between text-sm';
 
 /** Full-screen panel: first-level items, second level as accordions. */
 export function MobileMenu({ open, onClose, nav }: MobileMenuProps) {
@@ -36,7 +39,7 @@ export function MobileMenu({ open, onClose, nav }: MobileMenuProps) {
                   <>
                     <button
                       type="button"
-                      className={rowClass}
+                      className={cn(rowClass, isLatinLabel(item.label) && 'label-caps')}
                       aria-expanded={isOpen}
                       onClick={() => setExpanded(isOpen ? null : item.href)}
                     >
@@ -69,7 +72,11 @@ export function MobileMenu({ open, onClose, nav }: MobileMenuProps) {
                     ) : null}
                   </>
                 ) : (
-                  <Link to={item.href} onClick={onClose} className={rowClass}>
+                  <Link
+                    to={item.href}
+                    onClick={onClose}
+                    className={cn(rowClass, isLatinLabel(item.label) && 'label-caps')}
+                  >
                     {item.label}
                   </Link>
                 )}

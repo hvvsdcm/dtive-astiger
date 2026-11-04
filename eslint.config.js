@@ -46,6 +46,15 @@ export default defineConfig([
     languageOptions: { globals: globals.node },
   },
   {
+    // Playwright runs in Node; `test.use()` is not a React hook.
+    files: ['e2e/**/*.ts'],
+    languageOptions: { globals: globals.node },
+    rules: {
+      'react-hooks/rules-of-hooks': 'off',
+      'react-refresh/only-export-components': 'off',
+    },
+  },
+  {
     files: ['**/*.test.{ts,tsx}', 'src/test/**'],
     rules: { 'react-refresh/only-export-components': 'off' },
   },

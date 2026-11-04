@@ -5,9 +5,9 @@ select plan(30);
 -- fixture (as postgres) --------------------------------------------------------------------------
 insert into auth.users (id, email, aud, role, raw_user_meta_data) values
   ('11111111-1111-4111-8111-111111111111', 'u1@test.local', 'authenticated', 'authenticated',
-   '{"name":"유저1","terms_agreed":true,"privacy_agreed":true}'),
+   '{"name":"유저1","terms_agreed":true,"privacy_agreed":true,"age_confirmed":true}'),
   ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'admin@test.local', 'authenticated', 'authenticated',
-   '{"name":"관리자","terms_agreed":true,"privacy_agreed":true}');
+   '{"name":"관리자","terms_agreed":true,"privacy_agreed":true,"age_confirmed":true}');
 insert into public.admins (user_id) values ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
 
 insert into public.site_settings (id, bank_name, bank_account, bank_holder)

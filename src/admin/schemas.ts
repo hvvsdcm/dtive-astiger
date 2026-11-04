@@ -3,7 +3,7 @@ import { PRODUCT_STATUSES, type ProductStatus } from '@/types/domain';
 
 const SLUG_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
-export const slugSchema = z
+const slugSchema = z
   .string()
   .trim()
   .min(1, '슬러그를 입력하세요')
@@ -55,7 +55,7 @@ export const productSchema = z
 export type ProductFormInput = z.input<typeof productSchema>;
 export type ProductValues = z.output<typeof productSchema>;
 
-export const variantRowSchema = z.object({
+const variantRowSchema = z.object({
   id: z.string(),
   color: z.string().trim().max(30, '30자 이내'),
   size: z.string().trim().max(20, '20자 이내'),

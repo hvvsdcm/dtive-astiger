@@ -4,7 +4,7 @@ import type { ProductCardData } from '../model';
 import { ProductCard } from './ProductCard';
 
 /** 2 / 3 / 4 columns (<768 / 768–1279 / ≥1280), 8px column gap, 32px row gap. */
-export const GRID_CLASS = 'grid grid-cols-2 gap-x-2 gap-y-8 md:grid-cols-3 xl:grid-cols-4';
+const GRID_CLASS = 'grid grid-cols-2 gap-x-2 gap-y-8 md:grid-cols-3 xl:grid-cols-4';
 
 export type ProductGridProps = {
   products: ProductCardData[];
@@ -40,7 +40,7 @@ export function ProductGrid({
   );
 }
 
-export function ProductCardSkeleton({ className }: { className?: string }) {
+function ProductCardSkeleton({ className }: { className?: string }) {
   return (
     <div className={cn('flex flex-col', className)}>
       <Skeleton className="aspect-[3/4] w-full" />

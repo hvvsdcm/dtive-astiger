@@ -16,6 +16,7 @@ const validSignup = {
   phone: '010-1234-5678',
   termsAgreed: true,
   privacyAgreed: true,
+  ageConfirmed: true,
   marketingAgreed: false,
 };
 
@@ -66,14 +67,17 @@ describe('signupSchema', () => {
     });
   });
 
-  it('requires both mandatory consents', () => {
+  it('requires all mandatory consents', () => {
     const result = signupSchema.safeParse({
       ...validSignup,
       termsAgreed: false,
       privacyAgreed: false,
+      ageConfirmed: false,
     });
     expect(result.success).toBe(false);
-    expect(issuePaths(result)).toEqual(expect.arrayContaining(['termsAgreed', 'privacyAgreed']));
+    expect(issuePaths(result)).toEqual(
+      expect.arrayContaining(['termsAgreed', 'privacyAgreed', 'ageConfirmed']),
+    );
   });
 
   it('does not require marketing consent', () => {

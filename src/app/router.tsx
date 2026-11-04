@@ -10,12 +10,11 @@ import { RouteError } from './RouteError';
 import { requireAdmin } from './guards';
 
 /**
- * Store routes render inside StoreLayout (header + footer). Feature slices add their routes to
- * this list; set `handle: { headerOverlay: true }` (StoreRouteHandle) for a transparent header.
- * The admin area gets its own lazy top-level route next to the store layout.
+ * Store routes render inside StoreLayout (header + footer). Each feature exports its routes and
+ * they are listed here; set `handle: { headerOverlay: true }` (StoreRouteHandle) for a transparent
+ * header. The admin area gets its own lazy top-level route next to the store layout.
  */
 const storeRoutes: RouteObject[] = [
-  // catalog (S4) · auth/account (S3) · cart/checkout/orders (S5) · content pages (S8)
   ...catalogRoutes,
   ...authRoutes,
   ...accountRoutes,
@@ -24,10 +23,7 @@ const storeRoutes: RouteObject[] = [
   { path: '*', element: <NotFoundPage /> },
 ];
 
-/**
- * /admin/* pages, each in its own lazy chunk so the store bundle carries no admin code. Admin
- * slices (S6 products/categories, S7 orders/customers/home/settings) add their pages here.
- */
+/** /admin/* pages, each in its own lazy chunk so the store bundle carries no admin code. */
 const adminPages: RouteObject[] = [
   {
     index: true,

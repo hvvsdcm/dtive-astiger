@@ -245,14 +245,14 @@ isOneToOne: false
                   ]
                 },"profiles": {
                   Row: {
-                    "created_at": string,"email": string,"id": string,"marketing_agreed_at": string | null,"name": string,"phone": string | null,"privacy_agreed_at": string,"terms_agreed_at": string,"updated_at": string
+                    "age_confirmed_at": string,"created_at": string,"email": string,"id": string,"marketing_agreed_at": string | null,"name": string,"phone": string | null,"privacy_agreed_at": string,"terms_agreed_at": string,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"email": string,"id": string,"marketing_agreed_at"?: string | null,"name": string,"phone"?: string | null,"privacy_agreed_at": string,"terms_agreed_at": string,"updated_at"?: string
+                    "age_confirmed_at": string,"created_at"?: string,"email": string,"id": string,"marketing_agreed_at"?: string | null,"name": string,"phone"?: string | null,"privacy_agreed_at": string,"terms_agreed_at": string,"updated_at"?: string
                   }
                   Update: {
-                    "created_at"?: string,"email"?: string,"id"?: string,"marketing_agreed_at"?: string | null,"name"?: string,"phone"?: string | null,"privacy_agreed_at"?: string,"terms_agreed_at"?: string,"updated_at"?: string
+                    "age_confirmed_at"?: string,"created_at"?: string,"email"?: string,"id"?: string,"marketing_agreed_at"?: string | null,"name"?: string,"phone"?: string | null,"privacy_agreed_at"?: string,"terms_agreed_at"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     
