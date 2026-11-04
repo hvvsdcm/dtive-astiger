@@ -47,15 +47,15 @@ values (1, 3000, 100000, '국민은행', '000000-00-000000', '디티브아시티
 
 insert into public.categories (id, slug, name, parent_id, image_path, sort)
 values
-  ('3522c0db-45c4-4900-862d-65019478e239', 'women', '여성', null, 'products/2b83f8e4-52d6-4437-9a1e-8f3914d61f97/3611102d-a7ff-4a04-9a13-06ee6a6c9c96.webp', 0),
-  ('475178f9-197d-41eb-907a-892c1710a711', 'men', '남성', null, 'products/76f8ccef-c877-4294-8e1a-fbee7e4cd361/8d69e61d-80a0-43bc-acbb-29b59a233e7c.webp', 1),
-  ('650be103-ef2c-4901-a0a3-331da87adde0', 'accessories', '액세서리', null, 'products/ff852101-ab0c-431e-bcad-22ac716ac50e/fde89ef6-3918-4848-b2ae-1d5be4f8353e.webp', 2),
+  ('3522c0db-45c4-4900-862d-65019478e239', 'women', 'WOMEN', null, 'products/2b83f8e4-52d6-4437-9a1e-8f3914d61f97/3611102d-a7ff-4a04-9a13-06ee6a6c9c96.webp', 0),
+  ('475178f9-197d-41eb-907a-892c1710a711', 'men', 'MEN', null, 'products/76f8ccef-c877-4294-8e1a-fbee7e4cd361/d1f74857-e37d-46ec-a6c2-86c64e5bdb87.webp', 1),
+  ('650be103-ef2c-4901-a0a3-331da87adde0', 'accessories', 'ACCESSORIES', null, 'products/ff852101-ab0c-431e-bcad-22ac716ac50e/fde89ef6-3918-4848-b2ae-1d5be4f8353e.webp', 2),
   ('ad0de5f6-dcaa-499c-8ce7-26cea17397c5', 'women-outerwear', '아우터', '3522c0db-45c4-4900-862d-65019478e239', 'products/2b83f8e4-52d6-4437-9a1e-8f3914d61f97/3611102d-a7ff-4a04-9a13-06ee6a6c9c96.webp', 0),
   ('2da275ce-f57f-41cb-9e4f-daf80bbc8770', 'women-knitwear', '니트', '3522c0db-45c4-4900-862d-65019478e239', 'products/919a4d80-fa82-4aa9-893c-9a95d89c0989/fff22d97-0257-4984-b9dc-2373692ede7c.webp', 1),
   ('fb36e49d-f7b0-458c-baf4-46ef0cf57ed4', 'women-shirts', '셔츠', '3522c0db-45c4-4900-862d-65019478e239', 'products/257ed2d0-8985-4324-b996-dc8611a3626c/e21cbf93-87c6-4517-9a23-b869ed548ef6.webp', 2),
   ('f05b9221-82fe-404f-886d-a5e8ffc8a31c', 'women-pants', '팬츠', '3522c0db-45c4-4900-862d-65019478e239', 'products/c1bd102f-aba2-408d-b4b8-8a4a67fc2e6c/22afd745-e32d-4982-8c4f-5a2a65352564.webp', 3),
   ('756e371c-6942-4b88-88f2-c14609cd7850', 'women-dresses', '드레스', '3522c0db-45c4-4900-862d-65019478e239', 'products/7dd1d6ac-9d2f-4c33-87f2-54ba630a2ae3/8b30db43-3ce5-4797-8f28-3a7620e15177.webp', 4),
-  ('c49f5e98-a4bc-45c6-8a17-4286a7ce396a', 'men-outerwear', '아우터', '475178f9-197d-41eb-907a-892c1710a711', 'products/76f8ccef-c877-4294-8e1a-fbee7e4cd361/8d69e61d-80a0-43bc-acbb-29b59a233e7c.webp', 0),
+  ('c49f5e98-a4bc-45c6-8a17-4286a7ce396a', 'men-outerwear', '아우터', '475178f9-197d-41eb-907a-892c1710a711', 'products/76f8ccef-c877-4294-8e1a-fbee7e4cd361/d1f74857-e37d-46ec-a6c2-86c64e5bdb87.webp', 0),
   ('cc0f30d7-2d5b-4343-9895-64977c39ab87', 'men-knitwear', '니트', '475178f9-197d-41eb-907a-892c1710a711', 'products/0fcdd9f7-f16b-46d4-9d1d-04f4a6bbfdbe/4d3acfb0-48bd-4b0c-addc-42784701a043.webp', 1),
   ('9d191b03-9594-4ef3-9a1b-5997c38537d0', 'men-shirts', '셔츠', '475178f9-197d-41eb-907a-892c1710a711', 'products/fcde9e4b-b871-44b9-919b-b1d0c5bbe610/90c291a0-9e39-4974-9bb3-83650089734d.webp', 2),
   ('770ae031-4fc9-48b4-b0fb-3b1ae72c87ea', 'men-pants', '팬츠', '475178f9-197d-41eb-907a-892c1710a711', 'products/1bd262dc-2445-439e-a168-c51b16d76778/af6ef0e8-d034-4573-8bba-3bf86c47e447.webp', 3),
@@ -156,9 +156,8 @@ values
   ('8b30db43-3ce5-4797-8f28-3a7620e15177', '7dd1d6ac-9d2f-4c33-87f2-54ba630a2ae3', 'products/7dd1d6ac-9d2f-4c33-87f2-54ba630a2ae3/8b30db43-3ce5-4797-8f28-3a7620e15177.webp', '실크 슬립 드레스, Black', 'Black', 0),
   ('a27dd4dd-474b-472c-a8b3-be3bc4e1d228', '7dd1d6ac-9d2f-4c33-87f2-54ba630a2ae3', 'products/7dd1d6ac-9d2f-4c33-87f2-54ba630a2ae3/a27dd4dd-474b-472c-a8b3-be3bc4e1d228.webp', '실크 슬립 드레스, Ivory', 'Ivory', 1),
   ('8b72f5bd-7613-4a34-b302-c634d5ceb829', '7dd1d6ac-9d2f-4c33-87f2-54ba630a2ae3', 'products/7dd1d6ac-9d2f-4c33-87f2-54ba630a2ae3/8b72f5bd-7613-4a34-b302-c634d5ceb829.webp', '실크 슬립 드레스, Black', 'Black', 2),
-  ('8d69e61d-80a0-43bc-acbb-29b59a233e7c', '76f8ccef-c877-4294-8e1a-fbee7e4cd361', 'products/76f8ccef-c877-4294-8e1a-fbee7e4cd361/8d69e61d-80a0-43bc-acbb-29b59a233e7c.webp', '울 캐시미어 체스터 코트, Grey', 'Grey', 0),
-  ('d1f74857-e37d-46ec-a6c2-86c64e5bdb87', '76f8ccef-c877-4294-8e1a-fbee7e4cd361', 'products/76f8ccef-c877-4294-8e1a-fbee7e4cd361/d1f74857-e37d-46ec-a6c2-86c64e5bdb87.webp', '울 캐시미어 체스터 코트, Grey', 'Grey', 1),
-  ('aa9437e3-ec6d-47c3-b466-4085e12a2cf8', '76f8ccef-c877-4294-8e1a-fbee7e4cd361', 'products/76f8ccef-c877-4294-8e1a-fbee7e4cd361/aa9437e3-ec6d-47c3-b466-4085e12a2cf8.webp', '울 캐시미어 체스터 코트, Grey', 'Grey', 2),
+  ('d1f74857-e37d-46ec-a6c2-86c64e5bdb87', '76f8ccef-c877-4294-8e1a-fbee7e4cd361', 'products/76f8ccef-c877-4294-8e1a-fbee7e4cd361/d1f74857-e37d-46ec-a6c2-86c64e5bdb87.webp', '울 캐시미어 체스터 코트, Grey', 'Grey', 0),
+  ('aa9437e3-ec6d-47c3-b466-4085e12a2cf8', '76f8ccef-c877-4294-8e1a-fbee7e4cd361', 'products/76f8ccef-c877-4294-8e1a-fbee7e4cd361/aa9437e3-ec6d-47c3-b466-4085e12a2cf8.webp', '울 캐시미어 체스터 코트, Grey', 'Grey', 1),
   ('39b6b688-c77c-4e27-a0b5-434d100a09f2', '98dacfa7-8972-44d9-8e55-a49482a25b64', 'products/98dacfa7-8972-44d9-8e55-a49482a25b64/39b6b688-c77c-4e27-a0b5-434d100a09f2.webp', '싱글 브레스트 블레이저, Black', 'Black', 0),
   ('a6dfb598-c9e3-4e6d-aaa1-4ebfe6c3094d', '98dacfa7-8972-44d9-8e55-a49482a25b64', 'products/98dacfa7-8972-44d9-8e55-a49482a25b64/a6dfb598-c9e3-4e6d-aaa1-4ebfe6c3094d.webp', '싱글 브레스트 블레이저, Black', 'Black', 1),
   ('b1520197-93a2-42ac-9145-2fd9a147d2d9', '98dacfa7-8972-44d9-8e55-a49482a25b64', 'products/98dacfa7-8972-44d9-8e55-a49482a25b64/b1520197-93a2-42ac-9145-2fd9a147d2d9.webp', '싱글 브레스트 블레이저, Black', 'Black', 2),
@@ -251,7 +250,7 @@ values
   ('01fbd176-c20b-497b-818d-f3d84b68cacb', 'split', 'Tailoring', 'Shop Now', '/shop/women-outerwear', 'banners/01fbd176-c20b-497b-818d-f3d84b68cacb/f6771178-8cda-45fc-9d8c-afdfefa46c80.webp', 'banners/01fbd176-c20b-497b-818d-f3d84b68cacb/614c5126-7733-4e01-b976-1d8db864da2e.webp', null, '[]', 1),
   ('54703d94-2c84-45b3-b12e-537cf92232d7', 'collection', 'Women', 'View All', '/shop/women', null, null, '3522c0db-45c4-4900-862d-65019478e239', '[]', 2),
   ('4b17b407-b489-4d58-870a-ec8fc6135105', 'collection', 'Men', 'View All', '/shop/men', null, null, '475178f9-197d-41eb-907a-892c1710a711', '[]', 3),
-  ('467320ee-6c2c-4178-a7d5-7866bb0f98b8', 'lookbook', 'Lookbook AW26', 'View Lookbook', '/lookbook', null, null, null, '[{"image_path":"banners/467320ee-6c2c-4178-a7d5-7866bb0f98b8/8e6589a3-118c-4469-a1e3-346059e3ce2b.webp","caption":"Look 01","href":"/shop/women-outerwear"},{"image_path":"banners/467320ee-6c2c-4178-a7d5-7866bb0f98b8/1754a5da-725d-442f-a7a4-a1a40e2da95b.webp","caption":"Look 02","href":"/shop/women-knitwear"},{"image_path":"banners/467320ee-6c2c-4178-a7d5-7866bb0f98b8/69926abf-6cc6-46d8-bf62-5f163586bba2.webp","caption":"Look 03","href":"/shop/women-shirts"},{"image_path":"banners/467320ee-6c2c-4178-a7d5-7866bb0f98b8/0b53a2b5-1f39-4398-927e-b6c09d840f60.webp","caption":"Look 04","href":"/shop/men-outerwear"}]', 4);
+  ('467320ee-6c2c-4178-a7d5-7866bb0f98b8', 'lookbook', 'Lookbook AW26', 'View Lookbook', '/lookbook', null, null, null, '[{"image_path":"banners/467320ee-6c2c-4178-a7d5-7866bb0f98b8/8e6589a3-118c-4469-a1e3-346059e3ce2b.webp","caption":"Look 01","href":"/shop/women-outerwear"},{"image_path":"banners/467320ee-6c2c-4178-a7d5-7866bb0f98b8/1754a5da-725d-442f-a7a4-a1a40e2da95b.webp","caption":"Look 02","href":"/shop/women-dresses"},{"image_path":"banners/467320ee-6c2c-4178-a7d5-7866bb0f98b8/69926abf-6cc6-46d8-bf62-5f163586bba2.webp","caption":"Look 03","href":"/shop/women-pants"},{"image_path":"banners/467320ee-6c2c-4178-a7d5-7866bb0f98b8/0b53a2b5-1f39-4398-927e-b6c09d840f60.webp","caption":"Look 04","href":"/shop/men-outerwear"}]', 4);
 
 -- Seed inserts are not admin activity; start with an empty audit trail.
 delete from public.audit_logs;
