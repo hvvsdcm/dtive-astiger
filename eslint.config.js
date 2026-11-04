@@ -10,6 +10,7 @@ import tseslint from 'typescript-eslint';
 export default defineConfig([
   globalIgnores([
     'dist',
+    '.wrangler',
     'coverage',
     'playwright-report',
     'test-results',

@@ -1,0 +1,133 @@
+# Supabase free-plan upkeep (docs/DEPLOY.md, "백업·멈춤 방지").
+# - keepalive: a public REST read twice a week, so the project is never 7 days without requests
+#   (free projects pause after a week of inactivity).
+# - backup: weekly roles/schema/data dump, checked by restoring it into a throwaway local database,
+#   then encrypted with BACKUP_PASSPHRASE and kept as a 90-day artifact. Only the encrypted file
+#   leaves the runner: the dump holds customer emails, addresses and password hashes.
+# Manual run (Actions → Supabase maintenance → Run workflow) runs both jobs.
+# Based on https://supabase.com/docs/guides/deployment/ci/backups.
+name: Supabase maintenance
+
+on:
+  schedule:
+    - cron: '23 3 * * 1,4' # keepalive: Mon, Thu 12:23 KST
+    - cron: '41 18 * * 6' # backup: Sun 03:41 KST
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-maintenance
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+# Actions are pinned to release commit SHAs (tag in the comment); Dependabot (github-actions)
+# opens PRs that update both.
+jobs:
+  keepalive:
+    # Skipped until the deploy variables exist (docs/DEPLOY.md).
+    if: >-
+      vars.VITE_SUPABASE_URL != '' &&
+      (github.event_name != 'schedule' || github.event.schedule == '23 3 * * 1,4')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # site_settings.id is readable by anon (0005_rls.sql, 0009 column grants).
+      - name: Read one public row
+        env:
+          SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+        run: |
+          curl --fail --silent --show-error --output /dev/null \
+            --max-time 30 --retry 3 --retry-all-errors \
+            --header "apikey: ${SUPABASE_ANON_KEY}" \
+            --header "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+            "${SUPABASE_URL%/}/rest/v1/site_settings?select=id&limit=1"
+
+  backup:
+    if: github.event_name != 'schedule' || github.event.schedule == '41 18 * * 6'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # Session pooler URI (Dashboard → Connect → Session pooler, password filled in): runners are
+      # IPv4-only and the direct db.<ref>.supabase.co host is IPv6.
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+    steps:
+      # Secrets cannot be tested in a job `if`; without both the job ends here, green.
+      - name: Check secrets
+        id: check
+        run: |
+          if [[ -n "$SUPABASE_DB_URL" && -n "$BACKUP_PASSPHRASE" ]]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::SUPABASE_DB_URL or BACKUP_PASSPHRASE is not set; backup skipped (docs/DEPLOY.md)."
+          fi
+
+      # The CLI reads supabase/config.toml (Postgres major version) when dumping.
+      - if: steps.check.outputs.ready == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - if: steps.check.outputs.ready == 'true'
+        uses: supabase/setup-cli@689adcfb80d947100a1eab127289b97d1fb07b13 # v3.2.0
+        with:
+          version: 3.0.0
+
+      - name: Dump roles, schema and data
+        if: steps.check.outputs.ready == 'true'
+        run: |
+          mkdir -p "$RUNNER_TEMP/backup"
+          supabase db dump --remote="$SUPABASE_DB_URL" -f "$RUNNER_TEMP/backup/roles.sql" --role-only
+          supabase db dump --remote="$SUPABASE_DB_URL" -f "$RUNNER_TEMP/backup/schema.sql"
+          supabase db dump --remote="$SUPABASE_DB_URL" -f "$RUNNER_TEMP/backup/data.sql" \
+            --data-only --use-copy -x "storage.buckets_vectors" -x "storage.vector_indexes"
+
+      # A dump that finishes can still fail to restore; load it into a local database to find out.
+      - name: Check that the backup restores
+        if: steps.check.outputs.ready == 'true'
+        working-directory: ${{ runner.temp }}/backup
+        run: |
+          supabase init --workdir "$RUNNER_TEMP/restore-check"
+          supabase db start --workdir "$RUNNER_TEMP/restore-check"
+          psql \
+            --quiet \
+            --single-transaction \
+            --variable ON_ERROR_STOP=1 \
+            --file roles.sql \
+            --file schema.sql \
+            --command 'SET session_replication_role = replica' \
+            --file data.sql \
+            --dbname 'postgresql://postgres:postgres@127.0.0.1:54322/postgres' \
+            > /dev/null
+
+      # The passphrase goes to gpg on stdin, never on a command line.
+      - name: Encrypt
+        if: steps.check.outputs.ready == 'true'
+        working-directory: ${{ runner.temp }}/backup
+        env:
+          ARCHIVE: supabase-backup-${{ steps.check.outputs.date }}.tar.gz
+        run: |
+          tar -czf "$ARCHIVE" roles.sql schema.sql data.sql
+          printf '%s' "$BACKUP_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback \
+            --symmetric --cipher-algo AES256 --passphrase-fd 0 --output "$ARCHIVE.gpg" "$ARCHIVE"
+          rm -f "$ARCHIVE" roles.sql schema.sql data.sql
+
+      - if: steps.check.outputs.ready == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: supabase-backup-${{ steps.check.outputs.date }}
+          path: ${{ runner.temp }}/backup/supabase-backup-${{ steps.check.outputs.date }}.tar.gz.gpg
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0
+
+      - name: Remove plaintext dumps
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/backup"

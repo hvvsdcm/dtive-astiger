@@ -5,7 +5,7 @@
 ## 사용자 결정
 
 - 결제: 무통장입금만 (2026-11-04). PG 연동 설계하지 않음.
-- 배포: GitHub Pages 예정, 지금은 보류 (워크플로 파일만 둠).
+- 배포: 화면은 Cloudflare Workers(정적 파일, `main` push 시 GitHub Actions 배포), DB는 Supabase 무료 플랜 + Actions 주간 암호화 백업·주 2회 멈춤 방지, 한도에 가까워지면 Pro (2026-11-04). 계정 연결 전이라 아직 배포 안 됨.
 - 브랜드 표기: `DTIVE & ASTIGER` / 디티브 아시티거 (기본값).
 
 ## 계획에서 바뀐 것

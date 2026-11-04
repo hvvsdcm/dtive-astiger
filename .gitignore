@@ -6,6 +6,7 @@ dist/
 dist-ssr/
 *.tsbuildinfo
 node_modules/.tmp/
+.wrangler/
 
 # env (only .env.example is committed)
 .env

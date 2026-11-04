@@ -1,23 +1,26 @@
-# Build the store and publish it to GitHub Pages. Deployment is on hold: there is no push trigger,
-# run it by hand (Actions → Deploy to GitHub Pages → Run workflow). Setup: docs/DEPLOY.md.
-name: Deploy to GitHub Pages
+# Build the store and publish dist/ to Cloudflare Workers static assets (wrangler.jsonc) on every
+# push to main, or by hand (Actions → Deploy to Cloudflare → Run workflow). Setup: docs/DEPLOY.md.
+name: Deploy to Cloudflare
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
-# Every job gets read-only repository access; only `deploy` gets the Pages/OIDC token rights.
 permissions:
   contents: read
 
 # One deployment at a time; a queued run waits instead of cancelling a deployment in progress.
 concurrency:
-  group: pages
+  group: deploy
   cancel-in-progress: false
 
 # Actions are pinned to release commit SHAs (tag in the comment); Dependabot (github-actions)
 # opens PRs that update both.
 jobs:
-  build:
+  deploy:
+    # Skipped (not failed) until the repository variables exist (docs/DEPLOY.md).
+    if: vars.VITE_SUPABASE_URL != ''
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -42,26 +45,12 @@ jobs:
         env:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
-          VITE_BASE_PATH: ${{ vars.VITE_BASE_PATH }}
+          VITE_BASE_PATH: ${{ vars.VITE_BASE_PATH || '/' }}
           VITE_SITE_URL: ${{ vars.VITE_SITE_URL }}
 
-      # Pages has no rewrites: unknown paths serve 404.html, which boots the SPA router.
-      - name: SPA fallback
-        run: cp dist/index.html dist/404.html
-
-      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
-        with:
-          path: dist
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+      # Repository secrets. Unknown paths serve index.html (not_found_handling in wrangler.jsonc).
+      - name: Deploy
+        run: npx wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

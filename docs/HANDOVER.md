@@ -6,7 +6,7 @@ DTIVE & ASTIGER 쇼핑몰을 넘겨받은 사람이 혼자 운영·수정할 수
 
 ### 한눈에
 
-- **화면**: Vite + React 19 + TypeScript + Tailwind CSS 4로 만든 정적 사이트(SPA). 빌드하면 `dist/`에 HTML·JS·CSS만 남고, 어디든 정적 호스팅에 올릴 수 있습니다(예정: GitHub Pages).
+- **화면**: Vite + React 19 + TypeScript + Tailwind CSS 4로 만든 정적 사이트(SPA). 빌드하면 `dist/`에 HTML·JS·CSS만 남고, Cloudflare Workers 정적 호스팅에 올립니다(`main`에 push하면 GitHub Actions가 배포).
 - **서버**: 별도 서버 없음. Supabase가 회원 인증(Auth), 데이터베이스(Postgres), 이미지 저장(Storage)을 맡습니다. 가격 계산·재고 차감·주문 상태 변경 같은 중요한 처리는 전부 데이터베이스 함수(`security definer`) 안에서 일어나고, 화면은 그 함수를 호출만 합니다.
 - **권한**: 모든 테이블에 행 단위 보안(RLS)이 걸려 있어 고객은 자기 데이터만, 관리자(`public.admins`에 등록된 계정)만 전체 데이터를 봅니다. 화면의 관리자 확인은 편의일 뿐 실제 방어는 데이터베이스입니다.
 - **결제**: 무통장입금만. PG(카드 결제) 연동, 결제 웹훅, Edge Function은 없습니다.
@@ -33,7 +33,7 @@ supabase/
   tests/          pgTAP 테스트 (`npm run test:db`)
 scripts/          파비콘 생성, 시드 이미지 내려받기
 brand/            로고 원본(logo-source.png)과 벡터(logo.svg)
-.github/          Pages 배포 워크플로(수동 실행), Dependabot
+.github/          Cloudflare 배포·Supabase 백업/멈춤 방지 워크플로, Dependabot
 ```
 
 ### 주문 흐름
@@ -84,7 +84,7 @@ brand/            로고 원본(logo-source.png)과 벡터(logo.svg)
 
 ### 2.2 Supabase 클라우드 프로젝트
 
-1. https://supabase.com 에서 조직·프로젝트 생성. 리전은 **Northeast Asia (Seoul)** 권장(국내 고객 응답 속도). DB 비밀번호는 비밀번호 관리자에 보관하고 저장소에 넣지 마세요. 실제 운영은 백업이 있는 유료 플랜을 권장합니다.
+1. https://supabase.com 에서 조직·프로젝트 생성. 리전은 **Northeast Asia (Seoul)** 권장(국내 고객 응답 속도). DB 비밀번호는 비밀번호 관리자에 보관하고 저장소에 넣지 마세요. 무료 플랜으로 시작해도 됩니다: 일시 정지 방지와 주간 백업은 GitHub Actions 워크플로가 맡습니다([DEPLOY 7절](DEPLOY.md#7-백업멈춤-방지)). DB·사진 용량이 무료 한도에 가까워지거나 실제 매출이 생기면 Pro로 옮기세요([DEPLOY 8절](DEPLOY.md#8-pro-플랜으로-옮길-때)).
 2. 로컬에서 연결하고 스키마 올리기:
    ```sh
    supabase login
@@ -101,13 +101,15 @@ brand/            로고 원본(logo-source.png)과 벡터(logo.svg)
    pg_cron을 켤 수 없어도 운영은 가능합니다. 대신 관리자 대시보드의 "만료 주문 정리"를 하루 몇 번 누르세요.
 5. **Storage**: Dashboard → Storage에 `products`, `banners` 버킷(공개)이 있는지 확인합니다. 마이그레이션이 만들며, 비어 있는 게 정상입니다(시드 이미지는 로컬 전용).
 6. **Authentication → URL Configuration**
-   - Site URL: 실제 사이트 주소 (예: `https://dtive-astiger.com` 또는 `https://<계정>.github.io/<저장소>`)
-   - Redirect URLs: `auth/confirmed`, `auth/reset`, `account/profile` 세 주소를 사이트 주소 기준으로 정확히 추가(와일드카드 최소화). 값 예시는 [DEPLOY](DEPLOY.md#5-supabase-인증-주소).
+   - Site URL: 실제 사이트 주소 (예: `https://dtive-astiger.<계정 서브도메인>.workers.dev` 또는 `https://dtive-astiger.com`)
+   - Redirect URLs: `auth/confirmed`, `auth/reset`, `account/profile` 세 주소를 사이트 주소 기준으로 정확히 추가(와일드카드 최소화). 값 예시는 [DEPLOY](DEPLOY.md#4-supabase-인증-주소).
 7. **Authentication → Sign In / Providers → Email**: Confirm email 켜기, Secure password change 켜기, 비밀번호 최소 8자 + 영문·숫자 필수(로컬 `supabase/config.toml`과 같게). Pro 플랜이면 Leaked password protection도 켜기. 봇 가입·메일 폭탄·비밀번호 대입을 막는 CAPTCHA(Cloudflare Turnstile)는 프론트 코드 작업이 먼저 필요합니다. 순서는 [SECURITY의 봇 방지 CAPTCHA](SECURITY.md#봇-방지-captcha-운영-전-권장)를 따르세요(코드 배포 전에 Dashboard에서 켜면 로그인·가입이 모두 막힘).
 
    **Authentication → Multi-Factor**: Authenticator app(TOTP)이 켜져 있는지 확인합니다(모든 플랜 무료, 기본 켜짐). 꺼져 있으면 관리자가 관리자 화면에 들어갈 수 없습니다.
 
-8. **SMTP (필수)**: Supabase 기본 메일 발송은 **프로젝트 팀원 주소로만 보내고 시간당 발송 수도 매우 적어서** 실제 고객은 가입 인증 메일을 받지 못합니다. Authentication → Emails → SMTP Settings에 외부 SMTP(Resend, Amazon SES, Postmark, 네이버 웍스 메일 등)를 등록하고, 보내는 주소는 사이트 도메인으로 하세요(도메인 SPF·DKIM 설정 포함). 등록 후 Authentication → Rate Limits에서 시간당 메일 한도를 필요에 맞게 올립니다. 사용한 업체는 `business.mailService`에 적습니다.
+8. **SMTP (필수)**: Supabase 기본 메일 발송은 **프로젝트 팀원 주소로만 보내고 시간당 발송 수도 매우 적어서** 실제 고객은 가입 인증 메일을 받지 못합니다. Authentication → Emails → SMTP Settings에 외부 SMTP를 등록합니다. 등록 후 Authentication → Rate Limits에서 시간당 메일 한도를 필요에 맞게 올립니다. 사용한 업체는 `business.mailService`에 적습니다.
+   - **자기 도메인이 있으면**: Resend, Amazon SES, Postmark, 네이버 웍스 메일 등. 보내는 주소는 사이트 도메인으로 하세요(도메인 SPF·DKIM 설정 포함). Resend·SES는 자기 도메인을 인증해야 고객에게 보낼 수 있습니다.
+   - **도메인이 없으면**: Gmail + 앱 비밀번호(Google 계정에 2단계 인증을 켠 뒤 보안 → 앱 비밀번호 생성). Host `smtp.gmail.com`, Port `465`, Username·보내는 주소는 그 Gmail 주소, Password는 앱 비밀번호. 보내는 주소가 Gmail 주소로 보이고 Gmail의 하루 발송 한도가 적용됩니다. `business.mailService`는 `Google LLC`, `미국`.
 9. **메일 템플릿**: Authentication → Emails → Templates에서 세 개를 교체합니다. 본문은 `supabase/templates/*.html` 내용을 그대로 붙여 넣고, 제목은 아래와 같이 합니다. 링크는 `{{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=…` 형식이어야 하니 HTML을 고칠 때 이 부분은 건드리지 마세요.
 
    | 템플릿               | 파일                | 제목                                            |
@@ -133,7 +135,7 @@ brand/            로고 원본(logo-source.png)과 벡터(logo.svg)
 
 12. **입금 계좌 입력(필수)**: 관리자 로그인 → `/admin/settings`에서 은행·계좌번호·예금주를 입력하고 입금 기한·배송비·무료배송 기준을 확인해 저장. 계좌가 비어 있으면 모든 주문이 `BANK_NOT_CONFIGURED`("현재 주문을 받을 수 없습니다")로 막힙니다.
 13. **타입 재생성**(스키마를 바꾼 경우만): `supabase gen types typescript --linked > src/types/database.ts`
-14. 배포: [DEPLOY](DEPLOY.md).
+14. 배포(Cloudflare)·백업 설정: [DEPLOY](DEPLOY.md).
 15. 실제 주문 1건으로 끝까지 확인: 가입 메일 수신 → 주문 → 입금 확인 → 송장 → 배송 완료, 다른 주문 취소 → 환불 완료.
 
 ### 2.3 운영 전 마지막 점검
@@ -176,14 +178,15 @@ delete from auth.sessions    where user_id = (select id from auth.users where em
 
 ### 백업
 
-- 유료 플랜은 Supabase가 매일 자동 백업합니다(Dashboard → Database → Backups). 무료 플랜은 직접 받아야 합니다.
-- 직접 백업(월 1회 이상, 파일은 암호화된 곳에 보관 — 고객 개인정보 포함):
+- 유료 플랜은 Supabase가 매일 자동 백업합니다(Dashboard → Database → Backups).
+- 무료 플랜은 `Supabase maintenance` 워크플로가 매주 암호화된 백업을 Actions 아티팩트로 90일 보관합니다. 설정·복원 방법은 [DEPLOY 7절](DEPLOY.md#7-백업멈춤-방지). 한 달에 한 번은 Actions에서 최근 백업이 성공했는지 확인하세요.
+- 손으로 받을 때(파일은 암호화된 곳에 보관 — 고객 개인정보 포함):
   ```sh
   supabase db dump --linked -f backup-schema.sql
   supabase db dump --linked --data-only -f backup-data.sql
   supabase db dump --linked --role-only -f backup-roles.sql
   ```
-- 이미지(Storage)는 DB 백업에 들어가지 않습니다. Dashboard → Storage에서 내려받거나 S3 호환 접속으로 따로 보관하세요.
+- 이미지(Storage)는 DB 백업에 들어가지 않습니다. 원본 사진을 따로 보관하고, 필요하면 Dashboard → Storage에서 내려받거나 S3 호환 접속으로 보관하세요.
 
 ### 개인정보 보존·파기 (연 1회)
 

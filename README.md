@@ -1,6 +1,6 @@
 # DTIVE & ASTIGER
 
-디티브 아시티거 의류 쇼핑몰. React 정적 사이트(SPA)와 Supabase(회원 인증·데이터베이스·이미지 저장)로 동작하며, 결제는 무통장입금만 받습니다. 스토어, 회원가입·마이페이지, 관리자 페이지, 이용약관·개인정보처리방침이 들어 있고 GitHub Pages 배포 워크플로가 준비되어 있습니다(배포는 보류).
+디티브 아시티거 의류 쇼핑몰. React 정적 사이트(SPA)와 Supabase(회원 인증·데이터베이스·이미지 저장)로 동작하며, 결제는 무통장입금만 받습니다. 스토어, 회원가입·마이페이지, 관리자 페이지, 이용약관·개인정보처리방침이 들어 있습니다. 화면은 Cloudflare Workers에 GitHub Actions로 배포하고, Supabase 주간 백업·멈춤 방지도 Actions가 맡습니다.
 
 ## 필요한 도구
 
@@ -40,7 +40,7 @@ npm run dev                   # http://127.0.0.1:5174
 
 - [docs/HANDOVER.md](docs/HANDOVER.md): 구조, 운영 시작 체크리스트(Supabase 클라우드 설정, 사업자 정보), 일상 운영, 백업, 라이선스
 - [docs/ADMIN-GUIDE.md](docs/ADMIN-GUIDE.md): 관리자 페이지 사용법 (개발 지식 없이 읽는 문서)
-- [docs/DEPLOY.md](docs/DEPLOY.md): GitHub Pages 배포
+- [docs/DEPLOY.md](docs/DEPLOY.md): Cloudflare 배포, Supabase 백업·멈춤 방지
 - [docs/SECURITY.md](docs/SECURITY.md): 보안 구조와 점검 목록
 - [docs/PLAN.md](docs/PLAN.md): 처음 설계 문서 (스키마·화면·계약 전체)
 - [AGENTS.md](AGENTS.md): 코드 규칙 요약

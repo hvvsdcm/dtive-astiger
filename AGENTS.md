@@ -56,3 +56,5 @@ Run `npm run typecheck && npm run lint && npm run format && npm test && npm run 
 - No `dangerouslySetInnerHTML` (lint error). External links use `rel="noopener noreferrer"`.
 - The Content-Security-Policy is generated in `vite.config.ts` (`%APP_CSP%` in `index.html`) from
   `VITE_SUPABASE_URL`. Add a source there when a new third-party origin is required.
+- Hosting is Cloudflare Workers static assets (`wrangler.jsonc`, response headers in `public/_headers`),
+  deployed only by `.github/workflows/deploy.yml`; never deploy from a machine with `.env.local`.

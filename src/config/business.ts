@@ -21,8 +21,8 @@ export const business = {
   privacyOfficer: { name: '', email: '' },
   customerService: { hours: '평일 10:00–17:00', email: '' },
   social: { instagram: '' },
-  /** 호스팅서비스 제공자 (footer). Change it if the site moves off GitHub Pages. */
-  hostingProvider: 'GitHub, Inc.',
+  /** 호스팅서비스 제공자 (footer, privacy policy). Cloudflare Workers; change it if the site moves. */
+  hostingProvider: 'Cloudflare, Inc.',
   /** Supabase project region as shown to customers, e.g. '대한민국(서울)'. Privacy policy. */
   dataRegion: '',
   /** Custom SMTP provider that sends sign-up and password emails. Privacy policy. */
