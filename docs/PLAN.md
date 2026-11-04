@@ -194,6 +194,7 @@
 | `/admin/customers` | `CustomersPage.tsx` | profiles 목록(이름·이메일·전화·가입일·주문수), 검색, 상세 드로어(주문 목록 링크). 관리자 지정 UI 없음(SQL만) |
 | `/admin/home` | `HomeSectionsPage.tsx` | 섹션 목록 정렬·활성·추가/수정(kind별 폼: hero/split/collection/lookbook), 이미지 업로드(banners 버킷), 미리보기 링크 |
 | `/admin/settings` | `SettingsPage.tsx` | 배송비·무료배송 임계치·**입금 계좌(은행/계좌번호/예금주)**·입금 기한(시간), 저장. 하단 감사 로그 최근 200건 테이블 |
+| `/admin/mfa/setup`, `/admin/mfa` | `MfaSetupPage.tsx`, `MfaVerifyPage.tsx` | AdminLayout 밖. 비밀번호만 로그인한(aal1) 관리자: TOTP 미등록 → 등록(QR·키·코드), 등록됨 → 6자리 코드. 성공 후 `next`로 (0011) |
 
 공통 상태: 테이블 로딩 스켈레톤 행 5개, 빈 결과 "결과가 없습니다", 저장 성공 토스트 "저장했습니다", 실패 토스트에 서버 메시지.
 
@@ -567,7 +568,7 @@ qk.admin.products(filters), qk.admin.product(id), qk.admin.orders(filters), qk.a
    `default-src 'self'; script-src 'self' https://t1.daumcdn.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.supabase.co http://127.0.0.1:54321 https://images.unsplash.com; font-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co http://127.0.0.1:54321 ws://127.0.0.1:54321; frame-src https://postcode.map.daum.net; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests`.
    로컬 호스트는 `vite.config.ts`의 `transformIndexHtml`로 dev에서만 삽입. `frame-ancestors`는 meta 미지원(문서에 명시). `unsafe-inline` style은 Tailwind 런타임 없음이라 제거 가능하면 제거(워커가 빌드 후 콘솔 CSP 위반 0건 확인).
 8. **인증 설정**: 비밀번호 8자+영문+숫자(서버 `password_requirements`, 클라 zod 동일), 이메일 인증 필수, 비밀번호 변경 시 재인증(`secure_password_change`), refresh token rotation, rate limit 6.10 값. 호스팅: Dashboard에서 "Leaked password protection(HIBP)" ON, 커스텀 SMTP 등록(문서).
-9. **어드민 라우트**: `requireAdmin` loader + lazy chunk(스토어 번들에 어드민 코드 미포함) — 그러나 방어는 RLS/함수. 어드민 계정 MFA(TOTP)는 ⑩ 열린 결정.
+9. **어드민 라우트**: `requireAdmin` loader + lazy chunk(스토어 번들에 어드민 코드 미포함) — 그러나 방어는 RLS/함수. 어드민 계정 TOTP 필수(0011): `is_admin()`은 `aal2` 세션만 참.
 10. **업로드**: 버킷 `allowed_mime_types`·`file_size_limit` + 경로 정규식 with check + 어드민만 쓰기. 클라이언트는 `file.type` 화이트리스트, 10MB 초과 거부, canvas 재인코딩(webp)으로 메타데이터·악성 페이로드 제거.
 11. **세션/리다이렉트**: PKCE, `additional_redirect_urls`에 Pages URL 정확히 등록(와일드카드 최소). `next` 파라미터는 같은 origin 상대 경로만 허용(`/`로 시작, `//` 금지).
 12. **감사 로그**: 상품·주문·설정·섹션 변경, 계정 삭제 기록. 어드민 설정 페이지에서 열람.
@@ -720,7 +721,7 @@ Wave 5: S9 (E2E+최종 점검)
 1. **비회원 주문** — 기본: 없음(회원 전용). 허용하려면 `orders.user_id null + guest_email + 조회용 토큰` 추가 설계 필요.
 2. **브랜드 텍스트 표기** — 기본: `DTIVE & ASTIGER`. 대안 `DTIVE8ASTIGER`(로고 그대로).
 3. **TypeScript 7.0(네이티브) vs 5.9** — 기본: 5.9.3 고정(인계 안정성). 7.0은 인계자가 올릴 수 있게 문서에 메모.
-4. **어드민 계정 TOTP MFA** — 기본: 미구현(문서에 권장 절차). 구현 시 S3에 `/account/security` + `requireAdmin`에 `aal2` 검사 추가(+1 슬라이스 분량).
+4. **어드민 계정 TOTP MFA** — 구현됨(0011, 2026-11-04): 관리자는 TOTP 필수(`/admin/mfa/setup`, `/admin/mfa`), `is_admin()`이 `aal2` 요구. 고객 MFA 없음.
 5. **주문 확인 이메일 발송** — 기본: 없음(마이페이지·어드민에서 확인). 필요 시 Resend 등 + Edge Function이 추가되며 서버 비밀키 관리가 생김.
 6. **상품 검색 범위** — 기본: 이름·설명 ilike(pg_trgm). 초성/형태소 검색은 범위 밖.
 7. **시드 이미지** — 기본: Unsplash 실제 사진(출처 기록), 운영 전 실제 상품 사진으로 교체 전제.

@@ -103,7 +103,7 @@ reset role;
 update public.orders set payment_due_at = now() - interval '1 minute' where id = (select id from _orders where name = 'c');
 
 set local role authenticated;
-set local request.jwt.claims = '{"sub":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","role":"authenticated"}';
+set local request.jwt.claims = '{"sub":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","role":"authenticated","aal":"aal2"}';
 select is(public.expire_unpaid_orders(), 1, 'admin run expires the overdue order');
 reset role;
 

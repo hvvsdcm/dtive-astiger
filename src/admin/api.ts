@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { business } from '@/config/business';
 import { searchTerm } from '@/features/catalog/model';
 import { storageKey, type StorageBucket } from '@/lib/images';
 import { imageResize } from '@/lib/imageResize';
@@ -1027,4 +1028,40 @@ export async function fetchAuditLogs(
       actorEmail: row.actor_id ? (emails.get(row.actor_id) ?? null) : null,
     })),
   };
+}
+
+// Second factor (TOTP) ----------------------------------------------------------------------------
+
+export type TotpEnrollment = { factorId: string; qrCode: string; secret: string };
+
+/** Starts a TOTP enrolment, first removing unfinished ones left by earlier visits. */
+export async function startTotpEnrollment(): Promise<TotpEnrollment> {
+  const factors = await supabase.auth.mfa.listFactors();
+  if (factors.error) throw factors.error;
+  for (const factor of factors.data.all) {
+    if (factor.factor_type !== 'totp' || factor.status !== 'unverified') continue;
+    const { error } = await supabase.auth.mfa.unenroll({ factorId: factor.id });
+    if (error) throw error;
+  }
+  const { data, error } = await supabase.auth.mfa.enroll({
+    factorType: 'totp',
+    issuer: business.brandName,
+  });
+  if (error) throw error;
+  return { factorId: data.id, qrCode: data.totp.qr_code, secret: data.totp.secret };
+}
+
+/** Id of the admin's verified TOTP factor. */
+export async function verifiedTotpFactorId(): Promise<string> {
+  const { data, error } = await supabase.auth.mfa.listFactors();
+  if (error) throw error;
+  const factor = data.totp[0];
+  if (!factor) throw new Error('no verified TOTP factor');
+  return factor.id;
+}
+
+/** Checks a code from the authenticator app; on success the session is TOTP-verified (aal2). */
+export async function verifyTotp(factorId: string, code: string): Promise<void> {
+  const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId, code });
+  if (error) throw error;
 }

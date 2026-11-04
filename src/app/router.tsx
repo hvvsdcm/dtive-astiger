@@ -1,4 +1,6 @@
 import { createBrowserRouter, type RouteObject } from 'react-router';
+import type { MfaSetupData } from '@/admin/pages/MfaSetupPage';
+import type { MfaVerifyData } from '@/admin/pages/MfaVerifyPage';
 import { StoreLayout } from '@/components/layout/StoreLayout';
 import { catalogRoutes } from '@/features/catalog/routes';
 import { accountRoutes } from '@/features/account/routes';
@@ -7,7 +9,36 @@ import { checkoutRoutes } from '@/features/checkout/routes';
 import { contentRoutes } from '@/features/content/routes';
 import { NotFoundPage } from './NotFoundPage';
 import { RouteError } from './RouteError';
-import { requireAdmin } from './guards';
+import { requireAdmin, requireAdminMfaStep } from './guards';
+
+const adminFallback = <div className="min-h-svh bg-bg" />;
+
+/** TOTP screens for admins signed in with a password only (aal1), outside AdminLayout. */
+const adminMfaRoutes: RouteObject[] = [
+  {
+    path: 'admin/mfa',
+    loader: async (args): Promise<MfaVerifyData> => ({
+      next: await requireAdminMfaStep('verify', args),
+    }),
+    hydrateFallbackElement: adminFallback,
+    lazy: async () => ({ Component: (await import('@/admin/pages/MfaVerifyPage')).MfaVerifyPage }),
+    errorElement: <RouteError />,
+  },
+  {
+    path: 'admin/mfa/setup',
+    loader: async (args): Promise<MfaSetupData> => {
+      const next = await requireAdminMfaStep('enroll', args);
+      // Lazy like every admin module: the store bundle carries no admin code.
+      const { startTotpEnrollment } = await import('@/admin/api');
+      return { next, enrollment: await startTotpEnrollment() };
+    },
+    // Loading again would replace the factor behind the QR code on screen.
+    shouldRevalidate: () => false,
+    hydrateFallbackElement: adminFallback,
+    lazy: async () => ({ Component: (await import('@/admin/pages/MfaSetupPage')).MfaSetupPage }),
+    errorElement: <RouteError />,
+  },
+];
 
 /**
  * Store routes render inside StoreLayout (header + footer). Each feature exports its routes and
@@ -87,16 +118,20 @@ export const router = createBrowserRouter(
       errorElement: <RouteError />,
       children: [{ errorElement: <RouteError />, children: storeRoutes }],
     },
+    ...adminMfaRoutes,
     {
       path: 'admin',
-      // UI gate only; RLS and the admin functions re-check is_admin() on every request.
+      // UI gate only; RLS and the admin functions re-check is_admin() (TOTP-verified admin) on
+      // every request.
       loader: async (args) => {
         await requireAdmin(args);
         return null;
       },
-      // Checked on entry; AdminLayout handles sign-out while inside.
-      shouldRevalidate: () => false,
-      hydrateFallbackElement: <div className="min-h-svh bg-bg" />,
+      // Re-checked on every move to another admin page, so a session that lost its TOTP step goes
+      // back to the code screen; not after search changes. AdminLayout handles sign-out and
+      // FORBIDDEN answers while a page is open.
+      shouldRevalidate: ({ currentUrl, nextUrl }) => currentUrl.pathname !== nextUrl.pathname,
+      hydrateFallbackElement: adminFallback,
       lazy: async () => ({ Component: (await import('@/admin/AdminLayout')).AdminLayout }),
       errorElement: <RouteError />,
       children: [{ errorElement: <RouteError />, children: adminPages }],

@@ -18,6 +18,9 @@
 - 상단 메뉴의 룩북 라벨은 항상 `Lookbook` (카테고리 이름 언어에 따라 바꾸지 않음). 모바일 메뉴 대문자 자간은 영문 라벨에만.
 - CSP: http 오리진(개발 서버, 로컬 Supabase 대상 빌드)에서는 `http://postcode.map.*` 프레임도 허용. https 운영 빌드는 그대로.
 - E2E(`npm run e2e`)는 로컬 DB에 `docker exec … psql`로 테스트 계정을 만들고 정리. `layout.spec`이 390·1440px에서 가로 넘침·라운드·그림자·포커스 링을 검사 (`E2E_SCREENSHOTS_DIR` 지정 시 스크린샷 저장).
+- 보안 보강 0009: 관리자 전용 데이터(`admin_note`, 이벤트 note·actor_id, `updated_by`)는 고객·anon이 못 읽음, 관리자는 `admin_get_order`로 읽음. `create_order` 고객별 한도(입금 대기 3건, 1시간 10건). 마케팅 동의 시각은 서버가 기록. 감사 로그에 주문 개인정보·탈퇴 해시를 남기지 않음.
+- 보안 보강 0010: Storage 목록 조회는 관리자만. 홈 섹션 링크는 DB·프론트 모두 내부 경로만. 재고는 `admin_set_stock`(낙관적 잠금, `STOCK_CHANGED`)으로만 변경. 이메일 링크 타입을 경로별로 제한하고 다른 계정 세션이 있으면 전환 확인. 프레임 안에서는 렌더하지 않음. 빌드가 비공개 키를 거부. 워크플로 권한 최소화·SHA 고정.
+- 관리자 2단계 인증(TOTP) 필수 (0011): `is_admin()`은 `aal2` 세션만 참, 라우팅용 `is_admin_member()` 추가. 관리자 첫 로그인은 `/admin/mfa/setup`(QR·키·코드), 이후 `/admin/mfa`(코드). 관리자 페이지 이동마다 `requireAdmin` 재확인, 관리자 함수 `FORBIDDEN`이면 코드 화면으로. E2E는 TOTP를 계산해 등록·검증하고 끝나면 factor 삭제. 고객 MFA 없음.
 
 ## 슬라이스
 
@@ -32,3 +35,5 @@
 | S7 어드민 주문·회원·설정    | 완료 |
 | S8 법무 콘텐츠·문서·CI      | 완료 |
 | S9 E2E·최종 점검            | 완료 |
+| 보안 리뷰·보강              | 완료 |
+| 관리자 TOTP                 | 완료 |

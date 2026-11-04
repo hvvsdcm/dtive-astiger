@@ -60,7 +60,7 @@ reset role;
 
 -- admin ------------------------------------------------------------------------------------------
 set local role authenticated;
-set local request.jwt.claims = '{"sub":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","role":"authenticated"}';
+set local request.jwt.claims = '{"sub":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","role":"authenticated","aal":"aal2"}';
 
 -- happy path: pending → paid → preparing → shipped → delivered
 select throws_ok(

@@ -17,7 +17,10 @@ import { supabase } from '@/lib/supabase';
 export type SessionState = {
   session: Session | null;
   user: User | null;
-  /** UI convenience only; RLS and the admin functions re-check `is_admin()` on the server. */
+  /**
+   * Listed in admins (`is_admin_member()`), before or after the TOTP step. UI convenience only;
+   * RLS and the admin functions check `is_admin()` (admin with a TOTP-verified session).
+   */
   isAdmin: boolean;
   /** True until the stored session (and any auth code in the URL) has been read. */
   loading: boolean;
@@ -200,7 +203,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!userId) return;
     let active = true;
-    void supabase.rpc('is_admin').then(({ data, error }) => {
+    void supabase.rpc('is_admin_member').then(({ data, error }) => {
       if (active) setAdmin({ userId, value: !error && data === true });
     });
     return () => {

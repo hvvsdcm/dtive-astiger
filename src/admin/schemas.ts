@@ -299,3 +299,14 @@ export const trackingSchema = z.object({
 
 export type TrackingFormInput = z.input<typeof trackingSchema>;
 export type TrackingValues = z.output<typeof trackingSchema>;
+
+/** Six-digit code from the authenticator app (spaces, as some apps show "123 456", removed). */
+export const totpCodeSchema = z.object({
+  code: z
+    .string()
+    .transform((value) => value.replace(/\s/g, ''))
+    .pipe(z.string().regex(/^\d{6}$/, '6자리 숫자를 입력하세요')),
+});
+
+export type TotpCodeInput = z.input<typeof totpCodeSchema>;
+export type TotpCodeValues = z.output<typeof totpCodeSchema>;

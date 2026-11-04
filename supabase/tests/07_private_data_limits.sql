@@ -41,7 +41,7 @@ reset role;
 update public.orders set admin_note = '내부: 블랙리스트 의심' where id = (select id from _orders where name = 'a');
 update public.orders set status = 'paid', paid_at = now() where id = (select id from _orders where name = 'a');
 set local role authenticated;
-set local request.jwt.claims = '{"sub":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","role":"authenticated"}';
+set local request.jwt.claims = '{"sub":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","role":"authenticated","aal":"aal2"}';
 do $$ begin perform public.admin_update_order_status((select id from _orders where name = 'a'), 'cancelled', '환불 국민 123-456 유저1'); end $$;
 reset role;
 
@@ -76,7 +76,7 @@ set local request.jwt.claims = '{"sub":"11111111-1111-4111-8111-111111111111","r
 do $$ begin perform public.cancel_my_order((select id from _orders where name = 'b'), '사이즈 변경'); end $$;
 reset role;
 set local role authenticated;
-set local request.jwt.claims = '{"sub":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","role":"authenticated"}';
+set local request.jwt.claims = '{"sub":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","role":"authenticated","aal":"aal2"}';
 do $$ begin perform public.admin_update_order_status((select id from _orders where name = 'b'), 'cancelled', '환불 신한 999'); end $$;
 reset role;
 set local role authenticated;
@@ -89,7 +89,7 @@ reset role;
 
 -- admin reads everything through admin_get_order -------------------------------------------------
 set local role authenticated;
-set local request.jwt.claims = '{"sub":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","role":"authenticated"}';
+set local request.jwt.claims = '{"sub":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","role":"authenticated","aal":"aal2"}';
 select throws_ok($$select admin_note from public.orders$$, '42501', null, 'admins also read admin_note only through the RPC');
 select is(
   public.admin_get_order((select id from _orders where name = 'a')) ->> 'admin_note',

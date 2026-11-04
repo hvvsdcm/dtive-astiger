@@ -103,13 +103,6 @@ export function DashboardPage() {
             </h2>
             <div className="flex flex-col divide-y divide-line border-y border-line text-sm">
               <Link
-                to="/admin/orders?status=pending_payment"
-                className="flex h-12 items-center justify-between gap-4 hover:bg-surface"
-              >
-                <span>입금 확인 대기</span>
-                <span className="tabular-nums">{stats.data.counts.pending_payment}건</span>
-              </Link>
-              <Link
                 to="/admin/orders?status=cancel_requested"
                 className="flex h-12 items-center justify-between gap-4 hover:bg-surface"
               >

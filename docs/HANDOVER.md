@@ -104,6 +104,9 @@ brand/            로고 원본(logo-source.png)과 벡터(logo.svg)
    - Site URL: 실제 사이트 주소 (예: `https://dtive-astiger.com` 또는 `https://<계정>.github.io/<저장소>`)
    - Redirect URLs: `auth/confirmed`, `auth/reset`, `account/profile` 세 주소를 사이트 주소 기준으로 정확히 추가(와일드카드 최소화). 값 예시는 [DEPLOY](DEPLOY.md#5-supabase-인증-주소).
 7. **Authentication → Sign In / Providers → Email**: Confirm email 켜기, Secure password change 켜기, 비밀번호 최소 8자 + 영문·숫자 필수(로컬 `supabase/config.toml`과 같게). Pro 플랜이면 Leaked password protection도 켜기. 봇 가입·메일 폭탄·비밀번호 대입을 막는 CAPTCHA(Cloudflare Turnstile)는 프론트 코드 작업이 먼저 필요합니다. 순서는 [SECURITY의 봇 방지 CAPTCHA](SECURITY.md#봇-방지-captcha-운영-전-권장)를 따르세요(코드 배포 전에 Dashboard에서 켜면 로그인·가입이 모두 막힘).
+
+   **Authentication → Multi-Factor**: Authenticator app(TOTP)이 켜져 있는지 확인합니다(모든 플랜 무료, 기본 켜짐). 꺼져 있으면 관리자가 관리자 화면에 들어갈 수 없습니다.
+
 8. **SMTP (필수)**: Supabase 기본 메일 발송은 **프로젝트 팀원 주소로만 보내고 시간당 발송 수도 매우 적어서** 실제 고객은 가입 인증 메일을 받지 못합니다. Authentication → Emails → SMTP Settings에 외부 SMTP(Resend, Amazon SES, Postmark, 네이버 웍스 메일 등)를 등록하고, 보내는 주소는 사이트 도메인으로 하세요(도메인 SPF·DKIM 설정 포함). 등록 후 Authentication → Rate Limits에서 시간당 메일 한도를 필요에 맞게 올립니다. 사용한 업체는 `business.mailService`에 적습니다.
 9. **메일 템플릿**: Authentication → Emails → Templates에서 세 개를 교체합니다. 본문은 `supabase/templates/*.html` 내용을 그대로 붙여 넣고, 제목은 아래와 같이 합니다. 링크는 `{{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=…` 형식이어야 하니 HTML을 고칠 때 이 부분은 건드리지 마세요.
 
@@ -117,12 +120,17 @@ brand/            로고 원본(logo-source.png)과 벡터(logo.svg)
 
 10. **API 키**: Project Settings → API Keys의 **Publishable key**(또는 Legacy의 `anon` 키)와 Project URL만 사이트에 넣습니다. `secret`/`service_role` 키는 어디에도 넣지 마세요([SECURITY](SECURITY.md)).
 11. **첫 관리자 지정**: 사이트에서 관리자로 쓸 계정을 일반 회원가입(이메일 인증까지)으로 만든 뒤 SQL Editor에서 실행합니다. 관리자 지정·해제는 화면에서 할 수 없고 SQL로만 합니다.
+
     ```sql
     insert into public.admins (user_id, note)
     select id, '대표' from auth.users where email = 'owner@your-domain.com';
     -- 해제: delete from public.admins where user_id = (select id from auth.users where email = '…');
     ```
+
     관리자 계정에는 긴 고유 비밀번호를 쓰고, 관리자 수는 최소로 유지하세요.
+
+    **첫 로그인 때 인증 앱 등록**: 지정된 관리자가 `/admin`에 처음 들어가면 인증 앱 등록 화면이 나옵니다. 휴대폰의 인증 앱(Google Authenticator, Microsoft Authenticator, 1Password 등)으로 QR 코드를 스캔하거나 키를 입력하고, 앱에 나온 6자리 코드를 넣으면 등록이 끝납니다. 이후 로그인마다 6자리 코드를 묻습니다. 등록하지 않으면 관리자 화면과 관리자 데이터 모두 열리지 않습니다(데이터베이스의 `is_admin()`이 2단계 인증을 마친 세션만 관리자로 인정).
+
 12. **입금 계좌 입력(필수)**: 관리자 로그인 → `/admin/settings`에서 은행·계좌번호·예금주를 입력하고 입금 기한·배송비·무료배송 기준을 확인해 저장. 계좌가 비어 있으면 모든 주문이 `BANK_NOT_CONFIGURED`("현재 주문을 받을 수 없습니다")로 막힙니다.
 13. **타입 재생성**(스키마를 바꾼 경우만): `supabase gen types typescript --linked > src/types/database.ts`
 14. 배포: [DEPLOY](DEPLOY.md).
@@ -154,6 +162,17 @@ brand/            로고 원본(logo-source.png)과 벡터(logo.svg)
 ### 상품 등록
 
 관리자 → 상품 → "상품 추가": 이름·카테고리·가격·설명·소재·세탁 입력 → 이미지 업로드(JPEG/PNG/WebP, 10MB 이하, 자동으로 2000px·800px WebP로 변환) → 색상×사이즈 옵션과 재고 → 상태 "판매중"으로 저장. 주문된 적 있는 상품은 삭제할 수 없고 "보관"으로 바꿉니다. 상품 저장은 여러 단계로 나뉘어 있어 중간에 네트워크가 끊기면 일부만 저장될 수 있으니, 오류가 나면 다시 열어 확인 후 저장하세요.
+
+### 관리자 인증 앱 분실·교체
+
+휴대폰을 잃어버렸거나 바꿔서 6자리 코드를 받을 수 없으면, 요청한 사람이 그 관리자 본인인지 전화 등 다른 경로로 확인한 뒤 SQL Editor에서 실행합니다. 등록된 인증 앱이 지워지고 모든 기기에서 로그아웃되며, 다음 로그인 때 인증 앱 등록 화면이 다시 나옵니다.
+
+```sql
+delete from auth.mfa_factors where user_id = (select id from auth.users where email = 'owner@your-domain.com');
+delete from auth.sessions    where user_id = (select id from auth.users where email = 'owner@your-domain.com');
+```
+
+비밀번호도 함께 유출되었을 수 있으면 비밀번호 재설정도 하게 하세요. 관리자 계정을 더 쓰지 않으면 관리자 해제(2.2의 11단계 SQL)를 합니다.
 
 ### 백업
 
@@ -203,7 +222,6 @@ delete from public.audit_logs where created_at < now() - interval '5 years';    
 - **입금 확인은 수동**: 은행 API 연동이 없어 관리자가 통장을 보고 주문 상세에서 "입금 확인"을 누릅니다. 입금 기한이 지난 주문의 자동 취소는 pg_cron을 켠 경우에만 돕니다(2.2 참고).
 - **주문 알림 메일 없음**: 사이트가 보내는 메일은 Supabase Auth의 가입 인증·비밀번호 재설정·이메일 변경뿐입니다. 주문 접수·입금 확인·발송 알림은 메일로 가지 않으므로 고객은 마이페이지에서, 관리자는 대시보드에서 확인합니다.
 - **기본 SMTP로는 운영 불가**: Supabase 기본 메일은 팀원 주소로만, 시간당 소량만 보냅니다. 외부 SMTP 등록이 필수입니다(2.2의 8번).
-- **관리자 MFA 없음**: 관리자도 이메일·비밀번호로만 로그인합니다(`supabase/config.toml`의 `[auth.mfa.totp]` 꺼짐). 관리자 비밀번호를 길고 고유하게 쓰고 관리자 수를 최소로 유지하세요.
 - **상품 저장은 한 번에 묶이지 않음**: 상품 → 옵션 → 이미지 → 이미지 순서 정렬을 각각 따로 저장합니다. 중간에 실패하면 앞 단계까지만 저장되고, 편집 화면이 저장된 상태를 다시 불러옵니다. 오류 토스트가 뜨면 내용을 확인하고 다시 저장하세요.
 - **이미지 변환 기능 미사용**: Supabase 이미지 변환(유료)을 쓰지 않고, 업로드할 때 브라우저가 2000px·800px WebP 두 벌로 줄여 올립니다. 원본 파일은 보관하지 않으니 원본은 따로 보관하세요.
 - **시드 사진은 예시**: `supabase/seed-assets`의 Unsplash 사진은 로컬 개발용입니다. 운영 상품에는 실제 상품 사진을 올리세요.

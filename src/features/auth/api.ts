@@ -44,6 +44,9 @@ export function authErrorMessage(error: unknown): string {
       return '다시 로그인한 뒤 시도하세요';
     case 'signup_disabled':
       return '현재 회원가입을 받을 수 없습니다';
+    case 'mfa_verification_failed':
+    case 'mfa_challenge_expired':
+      return '코드가 올바르지 않습니다';
     default:
       return '요청을 처리하지 못했습니다';
   }

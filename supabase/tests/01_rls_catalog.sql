@@ -106,7 +106,7 @@ select results_eq(
 
 -- admin -------------------------------------------------------------------------------------------
 set local role authenticated;
-set local request.jwt.claims = '{"sub":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","role":"authenticated"}';
+set local request.jwt.claims = '{"sub":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","role":"authenticated","aal":"aal2"}';
 
 select is((select count(*)::int from public.products where slug like 'test-%'), 3, 'admin sees draft and archived products');
 select lives_ok(

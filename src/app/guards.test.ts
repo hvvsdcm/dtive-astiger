@@ -1,10 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { redirectIfAuthenticated, requireAdmin, requireAuth, safeNext } from './guards';
+import {
+  redirectIfAuthenticated,
+  requireAdmin,
+  requireAdminMfaStep,
+  requireAuth,
+  safeNext,
+} from './guards';
 
-const { getSession, rpc } = vi.hoisted(() => ({ getSession: vi.fn(), rpc: vi.fn() }));
+const { getSession, rpc, getAuthenticatorAssuranceLevel, listFactors } = vi.hoisted(() => ({
+  getSession: vi.fn(),
+  rpc: vi.fn(),
+  getAuthenticatorAssuranceLevel: vi.fn(),
+  listFactors: vi.fn(),
+}));
 
 vi.mock('@/lib/supabase', () => ({
-  supabase: { auth: { getSession }, rpc },
+  supabase: { auth: { getSession, mfa: { getAuthenticatorAssuranceLevel, listFactors } }, rpc },
 }));
 
 const session = { user: { id: 'u1' }, access_token: 't' };
@@ -24,7 +35,23 @@ async function thrownRedirect(promise: Promise<unknown>): Promise<string | null>
 beforeEach(() => {
   getSession.mockReset();
   rpc.mockReset();
+  getAuthenticatorAssuranceLevel.mockReset();
+  listFactors.mockReset();
 });
+
+/** A signed-in admin member at `level`, with or without a verified TOTP factor. */
+function adminAt(level: 'aal1' | 'aal2', hasFactor = level === 'aal2') {
+  getSession.mockResolvedValue({ data: { session } });
+  rpc.mockResolvedValue({ data: true, error: null });
+  getAuthenticatorAssuranceLevel.mockResolvedValue({
+    data: { currentLevel: level, nextLevel: hasFactor ? 'aal2' : 'aal1' },
+    error: null,
+  });
+  listFactors.mockResolvedValue({
+    data: { all: [], totp: hasFactor ? [{ id: 'f1' }] : [] },
+    error: null,
+  });
+}
 
 describe('safeNext', () => {
   it.each([
@@ -72,11 +99,21 @@ describe('requireAuth', () => {
 });
 
 describe('requireAdmin', () => {
-  it('lets admins through', async () => {
-    getSession.mockResolvedValue({ data: { session } });
-    rpc.mockResolvedValue({ data: true, error: null });
+  it('lets TOTP-verified admins through', async () => {
+    adminAt('aal2');
     await expect(requireAdmin()).resolves.toBeUndefined();
-    expect(rpc).toHaveBeenCalledWith('is_admin');
+    expect(rpc).toHaveBeenCalledWith('is_admin_member');
+  });
+
+  it('sends password-only admins to enrol or enter a code, returning to the path', async () => {
+    adminAt('aal1', false);
+    expect(await thrownRedirect(requireAdmin({ request: request('/admin/orders?page=2') }))).toBe(
+      `/admin/mfa/setup?next=${encodeURIComponent('/admin/orders?page=2')}`,
+    );
+    adminAt('aal1', true);
+    expect(await thrownRedirect(requireAdmin({ request: request('/admin/orders') }))).toBe(
+      `/admin/mfa?next=${encodeURIComponent('/admin/orders')}`,
+    );
   });
 
   it('sends signed-in non-admins home', async () => {
@@ -98,6 +135,45 @@ describe('requireAdmin', () => {
     );
     expect(await thrownRedirect(requireAdmin())).toBe('/');
     expect(rpc).not.toHaveBeenCalled();
+  });
+});
+
+describe('requireAdminMfaStep', () => {
+  const mfaRequest = (path: string, next = '/admin/orders') =>
+    request(`${path}?next=${encodeURIComponent(next)}`);
+
+  it('keeps an admin on the screen for their step and returns next', async () => {
+    adminAt('aal1', false);
+    await expect(
+      requireAdminMfaStep('enroll', { request: mfaRequest('/admin/mfa/setup') }),
+    ).resolves.toBe('/admin/orders');
+    adminAt('aal1', true);
+    await expect(
+      requireAdminMfaStep('verify', { request: mfaRequest('/admin/mfa') }),
+    ).resolves.toBe('/admin/orders');
+  });
+
+  it('switches to the other step', async () => {
+    adminAt('aal1', true);
+    expect(
+      await thrownRedirect(
+        requireAdminMfaStep('enroll', { request: mfaRequest('/admin/mfa/setup') }),
+      ),
+    ).toBe(`/admin/mfa?next=${encodeURIComponent('/admin/orders')}`);
+  });
+
+  it('sends verified admins on to a safe next, non-admins home', async () => {
+    adminAt('aal2');
+    expect(
+      await thrownRedirect(
+        requireAdminMfaStep('verify', { request: mfaRequest('/admin/mfa', 'https://evil.com') }),
+      ),
+    ).toBe('/admin');
+    getSession.mockResolvedValue({ data: { session } });
+    rpc.mockResolvedValue({ data: false, error: null });
+    expect(
+      await thrownRedirect(requireAdminMfaStep('verify', { request: mfaRequest('/admin/mfa') })),
+    ).toBe('/');
   });
 });
 

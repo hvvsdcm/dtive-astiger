@@ -10,7 +10,8 @@ import {
   Users,
   type LucideIcon,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
 import {
   Link,
   Navigate,
@@ -20,13 +21,14 @@ import {
   useLocation,
   useNavigate,
 } from 'react-router';
-import { loginPath } from '@/app/guards';
+import { adminMfaPath, loginPath } from '@/app/guards';
 import { cn } from '@/components/ui/cn';
 import { Icon } from '@/components/ui/Icon';
 import { Logo } from '@/components/ui/Logo';
 import { toast } from '@/components/ui/toastStore';
 import { authErrorMessage, signOut } from '@/features/auth/api';
 import { useSession } from '@/features/auth/session';
+import { rpcErrorCode } from '@/lib/rpcErrors';
 
 const NAV: { to: string; label: string; icon: LucideIcon; end?: boolean }[] = [
   { to: '/admin', label: '대시보드', icon: LayoutDashboard, end: true },
@@ -40,13 +42,34 @@ const NAV: { to: string; label: string; icon: LucideIcon; end?: boolean }[] = [
 
 /**
  * /admin shell: sidebar from lg, top bar with a scrolling menu row below it. The route loader
- * (requireAdmin) checked access on entry; this covers sign-out or expiry while the page is open.
+ * (requireAdmin) checks access on entry and on every move between admin pages; this covers
+ * sign-out while the page is open, and an admin function answering FORBIDDEN (the session lost
+ * its TOTP step) by going to the code screen.
  */
 export function AdminLayout() {
   const { session, loading } = useSession();
   const location = useLocation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [leaving, setLeaving] = useState(false);
+  const here = `${location.pathname}${location.search}`;
+
+  useEffect(() => {
+    const onError = (error: unknown) => {
+      if (rpcErrorCode(error) === 'FORBIDDEN')
+        navigate(adminMfaPath('verify', here), { replace: true });
+    };
+    const queries = queryClient.getQueryCache().subscribe((event) => {
+      if (event.type === 'updated' && event.action.type === 'error') onError(event.action.error);
+    });
+    const mutations = queryClient.getMutationCache().subscribe((event) => {
+      if (event.type === 'updated' && event.action.type === 'error') onError(event.action.error);
+    });
+    return () => {
+      queries();
+      mutations();
+    };
+  }, [queryClient, navigate, here]);
 
   async function leave() {
     setLeaving(true);
@@ -59,7 +82,7 @@ export function AdminLayout() {
   }
 
   if (!loading && !session && !leaving) {
-    return <Navigate to={loginPath(`${location.pathname}${location.search}`)} replace />;
+    return <Navigate to={loginPath(here)} replace />;
   }
 
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>

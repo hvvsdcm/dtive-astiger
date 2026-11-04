@@ -1,7 +1,14 @@
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
 import { z } from 'zod';
-import { ADMIN, anonClient, expectAccessible, login } from './support/app';
+import {
+  adminClient,
+  anonClient,
+  expectAccessible,
+  login,
+  loginAdmin,
+  resetAdminMfa,
+} from './support/app';
 import {
   auditMark,
   createUser,
@@ -23,12 +30,11 @@ const PRODUCT_SLUG = 'e2e-test-tee';
 let customer: TestUser;
 let mark: number;
 
-/** Removes the e2e product with its storage objects (admin session through the Storage API). */
+/** Removes the e2e product with its storage objects (TOTP-verified admin via the Storage API). */
 async function removeTestProduct() {
   const productId = sql(`select id from public.products where slug = ${lit(PRODUCT_SLUG)}`);
   if (!productId) return;
-  const supabase = anonClient();
-  await supabase.auth.signInWithPassword(ADMIN);
+  const supabase = await adminClient();
   const { data: objects } = await supabase.storage.from('products').list(productId);
   if (objects?.length) {
     await supabase.storage.from('products').remove(objects.map((o) => `${productId}/${o.name}`));
@@ -46,6 +52,7 @@ test.afterAll(async () => {
   await removeTestProduct();
   deleteUserByEmail(customer.email);
   purgeAuditSince(mark);
+  resetAdminMfa();
 });
 
 test('admin confirms a bank transfer and the customer sees it', async ({ page, browser }) => {
@@ -70,8 +77,7 @@ test('admin confirms a bank transfer and the customer sees it', async ({ page, b
   expect(error).toBeNull();
   const orderId = z.object({ order_id: z.uuid() }).parse(data).order_id;
 
-  await login(page, ADMIN.email, ADMIN.password);
-  await page.goto(`/admin/orders/${orderId}`);
+  await loginAdmin(page, `/admin/orders/${orderId}`);
   await expect(page.getByText('입금 대기').first()).toBeVisible();
   await expectAccessible(page);
   await page.getByRole('button', { name: '입금 확인', exact: true }).click();
@@ -90,8 +96,7 @@ test('admin confirms a bank transfer and the customer sees it', async ({ page, b
 });
 
 test('admin creates a product with a photo and it appears in the store', async ({ page }) => {
-  await login(page, ADMIN.email, ADMIN.password);
-  await page.goto('/admin/products/new');
+  await loginAdmin(page, '/admin/products/new');
   await page.getByLabel('상품명').fill('E2E 테스트 티셔츠');
   await page.getByLabel('슬러그').fill(PRODUCT_SLUG);
   await page.getByLabel('판매가 (원)').fill('39000');

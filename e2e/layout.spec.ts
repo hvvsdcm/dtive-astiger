@@ -1,7 +1,7 @@
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
-import { ADMIN, login } from './support/app';
+import { ADMIN, completeAdminMfa, login, resetAdminMfa } from './support/app';
 import {
   auditMark,
   createUser,
@@ -36,6 +36,7 @@ test.beforeAll(() => {
 test.afterAll(() => {
   deleteUserByEmail(customer.email);
   purgeAuditSince(mark);
+  resetAdminMfa();
 });
 
 async function check(page: Page, label: string, viewport: string, fullPage = true) {
@@ -173,8 +174,17 @@ for (const viewport of VIEWPORTS) {
         viewport: { width: viewport.width, height: viewport.height },
       });
       const admin = await adminContext.newPage();
-      await login(admin, ADMIN.email, ADMIN.password);
-      await admin.goto(`/admin/orders/${orderId}`);
+      const orderPath = `/admin/orders/${orderId}`;
+      await login(
+        admin,
+        ADMIN.email,
+        ADMIN.password,
+        `/login?next=${encodeURIComponent(orderPath)}`,
+      );
+      await expect(admin).toHaveURL(/\/admin\/mfa/);
+      const mfaStep = new URL(admin.url()).pathname.endsWith('/setup') ? 'setup' : 'verify';
+      await check(admin, `admin-mfa-${mfaStep}`, viewport.name);
+      await completeAdminMfa(admin, orderPath);
       await expect(admin.getByRole('button', { name: '입금 확인', exact: true })).toBeVisible();
       await check(admin, 'admin-order', viewport.name);
       await adminContext.close();

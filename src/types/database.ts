@@ -336,6 +336,9 @@ isOneToOne: false
 "is_admin":
 { Args: Record<PropertyKey, never>; Returns: boolean
                            },
+"is_admin_member":
+{ Args: Record<PropertyKey, never>; Returns: boolean
+                           },
 "reorder_product_images":
 { Args: { "p_image_ids": (string)[],"p_product_id": string }; Returns: undefined
                            },

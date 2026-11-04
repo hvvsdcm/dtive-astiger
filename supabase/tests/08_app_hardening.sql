@@ -36,7 +36,7 @@ set local request.jwt.claims = '{"sub":"11111111-1111-4111-8111-111111111111","r
 select is((select count(*) from storage.objects where bucket_id in ('products', 'banners')), 0::bigint,
   'customers cannot list storage objects');
 
-set local request.jwt.claims = '{"sub":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","role":"authenticated"}';
+set local request.jwt.claims = '{"sub":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","role":"authenticated","aal":"aal2"}';
 select ok((select count(*) from storage.objects where bucket_id = 'products'
             and name like 'f0000000-0000-4000-8000-000000000001/%') = 1,
   'admins can list storage objects');
@@ -122,7 +122,7 @@ select throws_ok(
       array['e0000000-0000-4000-8000-000000000001']::uuid[], array[12], array[1])$$,
   'P0001', 'FORBIDDEN', 'non-admin admin_set_stock → FORBIDDEN');
 
-set local request.jwt.claims = '{"sub":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","role":"authenticated"}';
+set local request.jwt.claims = '{"sub":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","role":"authenticated","aal":"aal2"}';
 select throws_ok(
   $$select public.admin_set_stock('f0000000-0000-4000-8000-000000000001',
       array['e0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000002']::uuid[],

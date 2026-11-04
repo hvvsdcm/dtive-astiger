@@ -9,6 +9,7 @@ import {
   slugify,
   suggestSlug,
   trackingSchema,
+  totpCodeSchema,
   validateVariantRows,
   type ProductFormInput,
   type SettingsFormInput,
@@ -215,5 +216,13 @@ describe('trackingSchema', () => {
     });
     expect(trackingSchema.safeParse({ carrier: '', trackingNo: '1' }).success).toBe(false);
     expect(trackingSchema.safeParse({ carrier: 'cj', trackingNo: '12 34' }).success).toBe(false);
+  });
+});
+
+describe('totpCodeSchema', () => {
+  it('accepts six digits, with or without spaces', () => {
+    expect(totpCodeSchema.parse({ code: '123 456' })).toEqual({ code: '123456' });
+    expect(totpCodeSchema.safeParse({ code: '12345' }).success).toBe(false);
+    expect(totpCodeSchema.safeParse({ code: '12345a' }).success).toBe(false);
   });
 });

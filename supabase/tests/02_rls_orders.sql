@@ -101,7 +101,7 @@ select results_eq(
 
 -- admin -------------------------------------------------------------------------------------------
 set local role authenticated;
-set local request.jwt.claims = '{"sub":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","role":"authenticated"}';
+set local request.jwt.claims = '{"sub":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","role":"authenticated","aal":"aal2"}';
 select is((select count(*)::int from public.orders where order_no like 'T-%'), 2, 'admin sees all orders');
 select lives_ok(
   $$update public.orders set admin_note = '확인 필요', carrier = 'cj', tracking_no = '123' where id = '0d000000-0000-4000-8000-000000000002'$$,
