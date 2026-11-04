@@ -1,5 +1,6 @@
 import { Outlet, ScrollRestoration, useMatches } from 'react-router';
 import { fallbackNav } from '@/config/site';
+import { CartDrawer } from '@/features/cart/components/CartDrawer';
 import { Footer } from './Footer';
 import { Header } from './Header';
 
@@ -28,6 +29,7 @@ export function StoreLayout() {
         <Outlet />
       </main>
       <Footer />
+      <CartDrawer />
       <ScrollRestoration />
     </>
   );
