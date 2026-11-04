@@ -3,6 +3,7 @@ import { fileURLToPath, URL } from 'node:url';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig, loadEnv, type Plugin } from 'vite';
+import { publicKeyProblem } from './src/config/publicKey';
 
 // Fixed nonce for the dev server only: Vite stamps it on the inline React Refresh preamble and on the
 // <style> tags its client injects. Production builds have no inline scripts/styles and no nonce.
@@ -74,8 +75,13 @@ function cspPlugin(supabaseUrl: string | undefined): Plugin {
 
 export default defineConfig(({ command, mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_');
-  if (command === 'build' && !env.VITE_SUPABASE_URL) {
-    throw new Error('VITE_SUPABASE_URL is required to build (see .env.example)');
+  if (command === 'build') {
+    if (!env.VITE_SUPABASE_URL) {
+      throw new Error('VITE_SUPABASE_URL is required to build (see .env.example)');
+    }
+    // The key is inlined into the bundle; refuse anything that is not a public client key.
+    const keyProblem = publicKeyProblem(env.VITE_SUPABASE_ANON_KEY ?? '');
+    if (keyProblem) throw new Error(`VITE_SUPABASE_ANON_KEY ${keyProblem} (see .env.example)`);
   }
 
   return {

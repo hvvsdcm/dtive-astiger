@@ -21,7 +21,7 @@ Settings → Secrets and variables → Actions → **Variables** 탭에 추가�
 | `VITE_BASE_PATH`         | 사이트가 열리는 경로. 앞뒤 `/` 필수    | 커스텀 도메인: `/` · 기본 주소: `/<저장소 이름>/`        |
 | `VITE_SITE_URL`          | 사이트 origin, 끝에 `/` 없음           | `https://dtive-astiger.com` · `https://<계정>.github.io` |
 
-`service_role`/`secret` 키는 절대 넣지 마세요. 빌드는 값이 빠지거나 형식이 틀리면 실패합니다(`src/config/env.ts`).
+`service_role`/`secret` 키는 절대 넣지 마세요. 빌드는 값이 빠졌거나, `VITE_SUPABASE_ANON_KEY`가 `sb_secret_…` 키이거나 `role`이 `anon`이 아닌 JWT(`service_role` 키 등)이면 실패합니다(`src/config/publicKey.ts`, `vite.config.ts`). 주소·경로 형식은 앱이 시작할 때 `src/config/env.ts`가 검사하고, 틀리면 화면 대신 콘솔 오류가 납니다.
 
 ## 4. 실행
 
@@ -59,7 +59,7 @@ Actions → **Deploy to GitHub Pages** → Run workflow. 워크플로는 다음�
 
 ## 7. 한계와 대안
 
-- **HTTP 헤더를 설정할 수 없음**: Pages는 응답 헤더를 바꿀 수 없어 CSP를 `<meta>`로 넣었습니다(`vite.config.ts`가 빌드 때 생성). `<meta>` CSP는 `frame-ancestors`를 지원하지 않고 `X-Frame-Options`도 보낼 수 없어, 다른 사이트가 이 사이트를 iframe에 넣는 것(클릭재킹)을 막지 못합니다. `X-Content-Type-Options`, `Permissions-Policy`도 마찬가지입니다.
+- **HTTP 헤더를 설정할 수 없음**: Pages는 응답 헤더를 바꿀 수 없어 CSP를 `<meta>`로 넣었습니다(`vite.config.ts`가 빌드 때 생성). `<meta>` CSP는 `frame-ancestors`를 지원하지 않고, `X-Frame-Options`·`X-Content-Type-Options`·`Permissions-Policy`도 보낼 수 없습니다. 클릭재킹은 앱이 프레임 안에서 열리면 스스로 실행하지 않는 것으로 막지만(`src/app/frameGuard.ts`), 스크립트로 하는 방어라 헤더보다 약하니 헤더를 쓸 수 있으면 아래처럼 추가하세요.
 - **404 상태 코드**: Pages에는 주소 재작성이 없어 `/shop/women` 같은 주소로 바로 들어오면 `404.html`(= 앱)이 404 상태로 응답합니다. 화면은 정상이지만 검색엔진은 404로 볼 수 있습니다.
 - **robots.txt**: 도메인 루트에 있을 때만 읽힙니다. 기본 주소(`/<저장소>/`)로 운영하면 무시됩니다.
 

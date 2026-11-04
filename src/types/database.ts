@@ -306,6 +306,12 @@ isOneToOne: false
             "admin_dashboard_stats":
 { Args: Record<PropertyKey, never>; Returns: Json
                            },
+"admin_get_order":
+{ Args: { "p_order_id": string }; Returns: Json
+                           },
+"admin_set_stock":
+{ Args: { "p_expected": (number)[],"p_product_id": string,"p_stock": (number)[],"p_variant_ids": (string)[] }; Returns: undefined
+                           },
 "admin_set_tracking":
 { Args: { "p_carrier": string,"p_order_id": string,"p_tracking_no": string }; Returns: undefined
                            },

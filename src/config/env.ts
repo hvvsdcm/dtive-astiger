@@ -1,11 +1,15 @@
 import { z } from 'zod';
+import { publicKeyProblem } from './publicKey';
 
 // CSP has no 'unsafe-eval'; stop zod from probing `new Function` on first parse.
 z.config({ jitless: true });
 
 const schema = z.object({
   VITE_SUPABASE_URL: z.url({ protocol: /^https?$/ }),
-  VITE_SUPABASE_ANON_KEY: z.string().min(20),
+  VITE_SUPABASE_ANON_KEY: z.string().superRefine((key, ctx) => {
+    const problem = publicKeyProblem(key);
+    if (problem) ctx.addIssue({ code: 'custom', message: problem });
+  }),
   VITE_BASE_PATH: z
     .string()
     .regex(/^\/(.*\/)?$/, 'must start and end with "/"')

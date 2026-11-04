@@ -6,16 +6,24 @@ import { supabase } from '@/lib/supabase';
 import type { Tables } from '@/types/database';
 import type { FreshVariant } from './reconcile';
 
-export type SiteSettings = Tables<'site_settings'>;
+/** site_settings.updated_by (admin UUID) is not readable by anon/authenticated (0009). */
+export type SiteSettings = Omit<Tables<'site_settings'>, 'updated_by'>;
 export type Order = Tables<'orders'>;
 export type OrderItem = Tables<'order_items'>;
 type OrderEvent = Tables<'order_events'>;
 
 /* --------------------------------------------------------------- settings */
 
-/** The single site_settings row (raw), cached under qk.settings. */
+const SITE_SETTINGS_COLUMNS =
+  'id, shipping_fee, free_shipping_threshold, bank_name, bank_account, bank_holder, payment_due_hours, updated_at';
+
+/** The single site_settings row, cached under qk.settings. */
 async function fetchSiteSettings(): Promise<SiteSettings> {
-  const { data, error } = await supabase.from('site_settings').select('*').eq('id', 1).single();
+  const { data, error } = await supabase
+    .from('site_settings')
+    .select(SITE_SETTINGS_COLUMNS)
+    .eq('id', 1)
+    .single();
   if (error) throw error;
   return data;
 }
@@ -129,17 +137,52 @@ export function useMyOrders(page: number) {
   });
 }
 
-export type OrderDetail = Order & { items: OrderItem[]; events: OrderEvent[] };
+/**
+ * The customer's view of an order. orders.admin_note and order_events.actor_id/note are admin-only
+ * and not readable with the customer's role (0009); the admin screen uses admin_get_order.
+ */
+export type OrderDetail = Pick<
+  Order,
+  | 'id'
+  | 'order_no'
+  | 'status'
+  | 'subtotal'
+  | 'shipping_fee'
+  | 'total'
+  | 'recipient'
+  | 'phone'
+  | 'postal_code'
+  | 'address1'
+  | 'address2'
+  | 'memo'
+  | 'depositor_name'
+  | 'bank_name'
+  | 'bank_account'
+  | 'bank_holder'
+  | 'payment_due_at'
+  | 'cancel_reason'
+  | 'cancel_requested_at'
+  | 'carrier'
+  | 'tracking_no'
+  | 'created_at'
+> & {
+  items: OrderItem[];
+  events: Pick<OrderEvent, 'id' | 'from_status' | 'to_status' | 'created_at'>[];
+};
+
+const ORDER_DETAIL_COLUMNS =
+  'id, order_no, status, subtotal, shipping_fee, total, recipient, phone, postal_code, address1, address2, memo, depositor_name, bank_name, bank_account, bank_holder, payment_due_at, cancel_reason, cancel_requested_at, carrier, tracking_no, created_at, items:order_items(*), events:order_events(id, from_status, to_status, created_at)';
 
 /** An order the current user may read (RLS), or null when it does not exist or is not theirs. */
 async function fetchOrder(id: string): Promise<OrderDetail | null> {
   if (!isUuid(id)) return null;
   const { data, error } = await supabase
     .from('orders')
-    .select('*, items:order_items(*), events:order_events(*)')
+    .select(ORDER_DETAIL_COLUMNS)
     .eq('id', id)
     .order('id', { referencedTable: 'order_items', ascending: true })
     .order('created_at', { referencedTable: 'order_events', ascending: true })
+    .order('id', { referencedTable: 'order_events', ascending: true })
     .maybeSingle();
   if (error) throw error;
   return data;

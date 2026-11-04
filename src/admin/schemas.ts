@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isInternalHref } from '@/lib/internalHref';
 import { PRODUCT_STATUSES, type ProductStatus } from '@/types/domain';
 
 const SLUG_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
@@ -188,14 +189,6 @@ export const categorySchema = z.object({
 
 export type CategoryFormInput = z.input<typeof categorySchema>;
 export type CategoryValues = z.output<typeof categorySchema>;
-
-/**
- * Path inside this app ("/shop/women", "/lookbook?season=aw26"). Other origins ("//x", "https:"),
- * schemes ("javascript:"), backslashes, spaces and control characters are rejected.
- */
-export function isInternalHref(value: string): boolean {
-  return /^\/(?![/\\])[^\s\\\p{Cc}]*$/u.test(value);
-}
 
 const hrefSchema = z
   .string()

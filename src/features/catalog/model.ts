@@ -148,8 +148,3 @@ export function imagesForColor(images: ProductCardImage[], color: string | null)
 
 /** Latin-only labels get the uppercase tracking style; Korean labels never do. */
 export const isLatinLabel = (label: string) => /^[\x20-\x7E]+$/.test(label);
-
-/** Router path for an internal link ("/shop"), or null when the value is not one. */
-export function internalPath(href: string): string | null {
-  return href.startsWith('/') && !href.startsWith('//') ? href : null;
-}

@@ -3,11 +3,14 @@ const RPC_ERROR_MESSAGES = {
   OUT_OF_STOCK: '재고가 부족한 상품이 있습니다',
   ITEM_UNAVAILABLE: '판매 중이 아닌 상품이 있습니다',
   BANK_NOT_CONFIGURED: '현재 주문을 받을 수 없습니다',
+  TOO_MANY_PENDING: '입금 대기 주문이 3건 있어 더 주문할 수 없습니다',
+  TOO_MANY_ORDERS: '주문이 너무 많습니다. 잠시 후 다시 시도하세요',
   CANNOT_CANCEL: '취소할 수 없는 주문입니다',
   ACTIVE_ORDERS: '진행 중인 주문이 있어 탈퇴할 수 없습니다',
   FORBIDDEN: '권한이 없습니다',
   INVALID_INPUT: '입력값을 확인하세요',
   INVALID_TRANSITION: '현재 상태에서 할 수 없는 작업입니다',
+  STOCK_CHANGED: '그사이 재고가 바뀌었습니다',
 } as const;
 
 export type RpcErrorCode = keyof typeof RPC_ERROR_MESSAGES;

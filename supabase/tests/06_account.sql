@@ -91,10 +91,10 @@ select results_eq(
   'order kept with user_id null and recipient snapshot'
 );
 select results_eq(
-  $$select before ->> 'email_sha256', after is null from public.audit_logs
+  $$select before is null, after is null from public.audit_logs
      where action = 'ACCOUNT_DELETED' and row_id = '11111111-1111-4111-8111-111111111111'$$,
-  $$values (encode(sha256(convert_to('u1-new@test.local', 'UTF8')), 'hex'), true)$$,
-  'ACCOUNT_DELETED audit row stores only hashes'
+  $$values (true, true)$$,
+  'ACCOUNT_DELETED audit row keeps no e-mail/name (not even hashed)'
 );
 select is((select count(*)::int from public.profiles where id = '22222222-2222-4222-8222-222222222222'), 1, 'other accounts untouched');
 

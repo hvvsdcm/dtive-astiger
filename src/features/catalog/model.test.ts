@@ -3,7 +3,6 @@ import {
   buildCategoryTree,
   compareSizes,
   imagesForColor,
-  internalPath,
   isSoldOut,
   parseListParams,
   productColors,
@@ -85,11 +84,5 @@ describe('catalog model', () => {
     expect(isSoldOut(product)).toBe(true);
     expect(imagesForColor(product.images, 'Black').map((i) => i.path)).toEqual(['b', 'c']);
     expect(imagesForColor(product.images, 'Red').map((i) => i.path)).toEqual(['a', 'b', 'c']);
-  });
-
-  it('accepts only same-origin relative paths as internal links', () => {
-    expect(internalPath('/shop')).toBe('/shop');
-    expect(internalPath('//evil.example')).toBeNull();
-    expect(internalPath('javascript:alert(1)')).toBeNull();
   });
 });

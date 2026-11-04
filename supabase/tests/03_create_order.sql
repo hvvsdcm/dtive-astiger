@@ -1,6 +1,6 @@
 -- create_order: server-side pricing, stock, shipping fee and error codes.
 begin;
-select plan(28);
+select plan(29);
 
 -- fixture (as postgres) --------------------------------------------------------------------------
 insert into auth.users (id, email, aud, role, raw_user_meta_data) values
@@ -165,6 +165,8 @@ select public.create_order(
 reset role;
 select is((select shipping_fee from public.orders where id = (select (r ->> 'order_id')::uuid from _result)), 3000, 'threshold null → shipping fee charged');
 
+-- user 1 now has 3 pending orders; mark them paid (stock unchanged) to stay under the 0009 limit
+update public.orders set status = 'paid' where user_id = '11111111-1111-4111-8111-111111111111';
 -- sold out after the orders above (10 - 3 - 3 = 4 left)
 set local role authenticated;
 select throws_ok(
@@ -196,10 +198,13 @@ select throws_ok(
     select id, 'x', 'x', 'x', 0, 1 from public.orders limit 1$$,
   '42501', null, 'order_items cannot be inserted through the API'
 );
-update public.product_variants set stock = 100 where id = 'e0000000-0000-4000-8000-000000000001';
+select throws_ok(
+  $$update public.product_variants set stock = 100 where id = 'e0000000-0000-4000-8000-000000000001'$$,
+  '42501', null, 'customers cannot write product_variants.stock (no column privilege)'
+);
 reset role;
 select is((select stock from public.product_variants where id = 'e0000000-0000-4000-8000-000000000001'), 4,
-  'customers cannot write product_variants (RLS filters the update)');
+  'customers cannot write product_variants');
 
 select * from finish();
 rollback;

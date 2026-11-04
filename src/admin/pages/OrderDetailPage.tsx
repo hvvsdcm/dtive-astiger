@@ -190,7 +190,7 @@ function OrderDetail({ order }: { order: AdminOrderDetail }) {
             )}
           </Section>
 
-          <Section title="관리자 메모">
+          <Section title="관리자 메모 · 고객 비공개">
             <AdminNote order={order} />
           </Section>
         </aside>
@@ -430,7 +430,7 @@ function ConfirmDialog({
         {withNote ? (
           <Field
             id={`${id}-note`}
-            label={noteRequired ? '환불 계좌 · 금액' : '메모'}
+            label={noteRequired ? '환불 계좌 · 금액 (고객 비공개)' : '메모 (고객 비공개)'}
             required={noteRequired}
             error={error || undefined}
           >

@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
-import { internalPath } from '../model';
+import { isInternalHref } from '@/lib/internalHref';
 
 /**
- * Link stored by the admin (home sections, lookbook items): router link for "/…" paths, new-tab
- * anchor for https URLs, plain content for anything else.
+ * Link stored by the admin (home sections, lookbook items): router link for paths inside this app,
+ * plain content for anything else (the database rejects other values; this guards old rows).
  */
 export function SectionLink({
   href,
@@ -17,26 +17,10 @@ export function SectionLink({
   children: ReactNode;
   'aria-label'?: string;
 }) {
-  const path = internalPath(href);
-  if (path) {
-    return (
-      <Link to={path} className={className} aria-label={ariaLabel}>
-        {children}
-      </Link>
-    );
-  }
-  if (/^https:\/\/\S+$/i.test(href)) {
-    return (
-      <a
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        className={className}
-        aria-label={ariaLabel}
-      >
-        {children}
-      </a>
-    );
-  }
-  return <>{children}</>;
+  if (!isInternalHref(href)) return <>{children}</>;
+  return (
+    <Link to={href} className={className} aria-label={ariaLabel}>
+      {children}
+    </Link>
+  );
 }

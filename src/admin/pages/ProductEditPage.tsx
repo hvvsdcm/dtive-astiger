@@ -18,6 +18,7 @@ import { Textarea } from '@/components/ui/Textarea';
 import { toast } from '@/components/ui/toastStore';
 import { pageTitle } from '@/config/site';
 import { qk } from '@/lib/queryKeys';
+import { rpcErrorCode, rpcErrorMessage } from '@/lib/rpcErrors';
 import { PRODUCT_STATUSES, PRODUCT_STATUS_LABEL } from '@/types/domain';
 import {
   adminCategoriesKey,
@@ -58,6 +59,7 @@ export function ProductEditPage() {
     enabled: validId,
   });
   const categories = useQuery({ queryKey: adminCategoriesKey, queryFn: fetchAdminCategories });
+  const [reloads, setReloads] = useState(0);
 
   if ((id !== undefined && !validId) || product.data === null) {
     return (
@@ -92,9 +94,14 @@ export function ProductEditPage() {
   return (
     <ProductEditor
       // A fresh editor per stored version: after a save the refetched row resets every field.
-      key={product.data ? `${product.data.id}:${product.data.updated_at}` : 'new'}
+      // `reloads` forces one after a stock conflict, where the product row itself is unchanged.
+      key={product.data ? `${product.data.id}:${product.data.updated_at}:${reloads}` : 'new'}
       product={product.data ?? null}
       categories={categories.data}
+      onReload={async () => {
+        await product.refetch();
+        setReloads((count) => count + 1);
+      }}
     />
   );
 }
@@ -151,9 +158,11 @@ type DeleteState = { orders: number } | null;
 function ProductEditor({
   product,
   categories,
+  onReload,
 }: {
   product: AdminProduct | null;
   categories: CategoryRow[];
+  onReload: () => Promise<void>;
 }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -166,6 +175,7 @@ function ProductEditor({
   const [variantErrors, setVariantErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [deleteState, setDeleteState] = useState<DeleteState>(null);
+  const [stockConflict, setStockConflict] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const {
     register,
@@ -239,6 +249,9 @@ function ProductEditor({
         publishedAt: product?.published_at ?? null,
         values,
         variants: checked.rows,
+        stockRead: Object.fromEntries(
+          initialVariants.rows.map((row) => [row.id, Number(row.stock)]),
+        ),
         removedVariantIds: initialVariants.rows
           .map((row) => row.id)
           .filter((variantId) => !keptVariantIds.has(variantId)),
@@ -250,6 +263,11 @@ function ProductEditor({
       await refreshCaches();
       if (isNew) navigate(`/admin/products/${productId}`, { replace: true });
     } catch (error) {
+      // Nothing was saved: let the admin reload the current stock instead of overwriting it.
+      if (rpcErrorCode(error) === 'STOCK_CHANGED') {
+        setStockConflict(rpcErrorMessage(error));
+        return;
+      }
       toast(adminErrorMessage(error), 'error');
       // Saving is several requests; show whatever was stored before the failure.
       if (isNew && (await fetchAdminProduct(productId).catch(() => null))) {
@@ -496,6 +514,19 @@ function ProductEditor({
         }
       >
         변경 사항이 저장되지 않습니다.
+      </Dialog>
+
+      <Dialog
+        open={stockConflict !== null}
+        onClose={() => setStockConflict(null)}
+        title="재고 변경"
+        footer={
+          <Button size="sm" onClick={() => void onReload()}>
+            다시 불러오기
+          </Button>
+        }
+      >
+        {stockConflict}
       </Dialog>
 
       <Dialog

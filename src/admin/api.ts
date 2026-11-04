@@ -242,6 +242,8 @@ export type SaveProductInput = {
   values: ProductValues;
   /** Final rows in display order; `id` is generated client-side for new rows. */
   variants: VariantRowValues[];
+  /** Stock of each saved variant as the editor loaded it, by id. Variants not listed are new. */
+  stockRead: Record<string, number>;
   removedVariantIds: string[];
   /** Final images in display order. New ones get an id here. */
   images: ImageItem[];
@@ -250,11 +252,27 @@ export type SaveProductInput = {
 };
 
 /**
- * Saves a product in the order fixed by the plan: products → product_variants (delete, upsert) →
- * product_images (delete, upsert) → reorder_product_images. These are separate requests, so a
+ * Saves a product in the order fixed by the plan: stock changes (admin_set_stock) → products →
+ * product_variants (delete, update saved rows without stock, insert new rows with stock) →
+ * product_images (delete, upsert) → reorder_product_images. Stock goes first so a STOCK_CHANGED
+ * conflict (an order since the editor loaded) saves nothing. These are separate requests, so a
  * failure part-way leaves the earlier steps saved; the editor reloads and shows what was stored.
  */
 export async function saveProduct(input: SaveProductInput): Promise<void> {
+  const isSaved = (variantId: string) => Object.hasOwn(input.stockRead, variantId);
+  const stockChanges = input.variants.filter(
+    (v) => isSaved(v.id) && v.stock !== input.stockRead[v.id],
+  );
+  if (stockChanges.length > 0) {
+    const { error } = await supabase.rpc('admin_set_stock', {
+      p_product_id: input.id,
+      p_variant_ids: stockChanges.map((v) => v.id),
+      p_expected: stockChanges.map((v) => input.stockRead[v.id] ?? 0),
+      p_stock: stockChanges.map((v) => v.stock),
+    });
+    if (error) throw error;
+  }
+
   const { values } = input;
   const productRow = {
     id: input.id,
@@ -284,20 +302,30 @@ export async function saveProduct(input: SaveProductInput): Promise<void> {
       .in('id', input.removedVariantIds);
     if (error) throw error;
   }
-  if (input.variants.length > 0) {
-    const { error } = await supabase.from('product_variants').upsert(
-      input.variants.map((v, index) => ({
-        id: v.id,
-        product_id: input.id,
-        sku: v.sku,
-        color: v.color,
-        size: v.size,
-        stock: v.stock,
-        price_delta: v.priceDelta,
-        is_active: v.isActive,
-        sort: index,
-      })),
-    );
+  const rows = input.variants.map((v, index) => ({
+    variant: {
+      id: v.id,
+      product_id: input.id,
+      sku: v.sku,
+      color: v.color,
+      size: v.size,
+      price_delta: v.priceDelta,
+      is_active: v.isActive,
+      sort: index,
+    },
+    stock: v.stock,
+  }));
+  // Admins cannot update stock directly (0010); saved rows keep the stored value.
+  const savedRows = rows.flatMap(({ variant }) => (isSaved(variant.id) ? [variant] : []));
+  if (savedRows.length > 0) {
+    const { error } = await supabase.from('product_variants').upsert(savedRows);
+    if (error) throw error;
+  }
+  const newRows = rows.flatMap(({ variant, stock }) =>
+    isSaved(variant.id) ? [] : [{ ...variant, stock }],
+  );
+  if (newRows.length > 0) {
+    const { error } = await supabase.from('product_variants').insert(newRows);
     if (error) throw error;
   }
 
@@ -610,21 +638,16 @@ export type AdminOrderDetail = Order & {
   customer: { id: string; name: string; email: string; phone: string | null } | null;
 };
 
-/** Order with lines, events (oldest first) and orderer, or null when the id does not exist. */
+/**
+ * Order with lines, events (oldest first) and orderer, or null when the id does not exist.
+ * Through admin_get_order: admin_note and the events' actor_id/note are not readable with the
+ * table API (column grants hide them from customers, who share the `authenticated` role).
+ */
 export async function fetchAdminOrder(id: string): Promise<AdminOrderDetail | null> {
   if (!isUuid(id)) return null;
-  const { data, error } = await supabase
-    .from('orders')
-    .select(
-      '*, items:order_items(*), events:order_events(*), customer:profiles(id, name, email, phone)',
-    )
-    .eq('id', id)
-    .order('id', { referencedTable: 'order_items' })
-    .order('created_at', { referencedTable: 'order_events' })
-    .order('id', { referencedTable: 'order_events' })
-    .maybeSingle();
+  const { data, error } = await supabase.rpc('admin_get_order', { p_order_id: id });
   if (error) throw error;
-  return data;
+  return data as AdminOrderDetail | null;
 }
 
 /** State change through admin_update_order_status (the server checks the transition table). */
@@ -655,7 +678,7 @@ export async function setOrderTracking(
   if (error) throw error;
 }
 
-/** Internal memo (orders.admin_note is one of the three columns admins may update directly). */
+/** Customer-private memo: orders.admin_note is updatable by admins but read only via admin_get_order. */
 export async function saveAdminNote(orderId: string, note: string): Promise<void> {
   const { error } = await supabase
     .from('orders')

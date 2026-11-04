@@ -139,22 +139,24 @@ export function OrderDetailPage() {
   );
 }
 
-const EXPIRED_NOTE = '입금 기한 만료';
+const EXPIRED_REASON = '입금 기한 만료';
 
-function eventLabel(event: OrderDetail['events'][number]): string {
+/**
+ * Event notes are admin-only, so labels come from the status pair: paid/preparing → same status is
+ * the customer's cancel request, shipped → shipped a waybill change. An order is cancelled once, so
+ * its cancel_reason tells whether the cancellation was the payment deadline.
+ */
+function eventLabel(event: OrderDetail['events'][number], order: OrderDetail): string {
   if (event.from_status === null) return '주문 접수';
   if (event.from_status === event.to_status) {
-    return event.note === '취소 요청' ? '취소 요청' : '배송 정보 변경';
+    return event.to_status === 'shipped' ? '배송 정보 변경' : '취소 요청';
   }
-  if (event.to_status === 'cancelled' && event.note === EXPIRED_NOTE)
+  if (event.to_status === 'cancelled' && order.cancel_reason === EXPIRED_REASON)
     return '취소 · 입금 기한 만료';
   return ORDER_STATUS_LABEL[event.to_status];
 }
 
-/**
- * order_events, oldest first. Admin notes (refund details, internal memos) are not shown; only the
- * fixed system notes map to labels.
- */
+/** order_events, oldest first. */
 function Timeline({ order }: { order: OrderDetail }) {
   return (
     <ol className="flex flex-col">
@@ -168,7 +170,7 @@ function Timeline({ order }: { order: OrderDetail }) {
             </div>
             <div className={last ? 'flex flex-col' : 'flex flex-col pb-5'}>
               <span className={last ? 'text-base font-medium' : 'text-base'}>
-                {eventLabel(event)}
+                {eventLabel(event, order)}
               </span>
               <span className="text-xs text-ink-muted tabular-nums">
                 {formatDateTime(event.created_at)}

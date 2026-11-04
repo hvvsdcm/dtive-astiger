@@ -103,7 +103,7 @@ brand/            로고 원본(logo-source.png)과 벡터(logo.svg)
 6. **Authentication → URL Configuration**
    - Site URL: 실제 사이트 주소 (예: `https://dtive-astiger.com` 또는 `https://<계정>.github.io/<저장소>`)
    - Redirect URLs: `auth/confirmed`, `auth/reset`, `account/profile` 세 주소를 사이트 주소 기준으로 정확히 추가(와일드카드 최소화). 값 예시는 [DEPLOY](DEPLOY.md#5-supabase-인증-주소).
-7. **Authentication → Sign In / Providers → Email**: Confirm email 켜기, Secure password change 켜기, 비밀번호 최소 8자 + 영문·숫자 필수(로컬 `supabase/config.toml`과 같게). Pro 플랜이면 Leaked password protection도 켜기.
+7. **Authentication → Sign In / Providers → Email**: Confirm email 켜기, Secure password change 켜기, 비밀번호 최소 8자 + 영문·숫자 필수(로컬 `supabase/config.toml`과 같게). Pro 플랜이면 Leaked password protection도 켜기. 봇 가입·메일 폭탄·비밀번호 대입을 막는 CAPTCHA(Cloudflare Turnstile)는 프론트 코드 작업이 먼저 필요합니다. 순서는 [SECURITY의 봇 방지 CAPTCHA](SECURITY.md#봇-방지-captcha-운영-전-권장)를 따르세요(코드 배포 전에 Dashboard에서 켜면 로그인·가입이 모두 막힘).
 8. **SMTP (필수)**: Supabase 기본 메일 발송은 **프로젝트 팀원 주소로만 보내고 시간당 발송 수도 매우 적어서** 실제 고객은 가입 인증 메일을 받지 못합니다. Authentication → Emails → SMTP Settings에 외부 SMTP(Resend, Amazon SES, Postmark, 네이버 웍스 메일 등)를 등록하고, 보내는 주소는 사이트 도메인으로 하세요(도메인 SPF·DKIM 설정 포함). 등록 후 Authentication → Rate Limits에서 시간당 메일 한도를 필요에 맞게 올립니다. 사용한 업체는 `business.mailService`에 적습니다.
 9. **메일 템플릿**: Authentication → Emails → Templates에서 세 개를 교체합니다. 본문은 `supabase/templates/*.html` 내용을 그대로 붙여 넣고, 제목은 아래와 같이 합니다. 링크는 `{{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=…` 형식이어야 하니 HTML을 고칠 때 이 부분은 건드리지 마세요.
 
@@ -144,12 +144,12 @@ brand/            로고 원본(logo-source.png)과 벡터(logo.svg)
 1. **입금 확인**: 통장 내역과 관리자 → 주문 → "입금 대기" 탭을 대조(입금자명·금액). 맞으면 주문 상세에서 "입금 확인".
 2. **발송**: "입금 확인" 주문을 포장하며 "상품 준비중"으로 바꾸고, 송장이 나오면 택배사·송장번호를 입력(→ 배송중). 고객 주문 상세에 조회 링크가 생깁니다. 택배사는 목록에서 고르세요(조회 링크가 택배사 코드로 만들어짐).
 3. **배송 완료**: 택배 조회로 도착이 확인되면 "배송 완료".
-4. **취소 요청**: 주문 목록의 "취소 요청" 표시를 확인. 발송 전이면 주문 상세에서 "주문 취소"(메모에 환불 계좌·금액), 은행 이체 후 "환불 완료".
+4. **취소 요청**: 주문 목록의 "취소 요청" 표시를 확인. 발송 전이면 주문 상세에서 "주문 취소"(메모에 환불 계좌·금액, 고객 비공개), 은행 이체 후 "환불 완료".
 5. **문의 메일**: `customerService.email`로 오는 교환·반품·배송지 변경·현금영수증 요청 처리.
 
 ### 교환·반품
 
-화면에 반품 신청 기능은 없고 이메일로 받습니다. 상품이 도착하면 확인 후 3영업일 안에 환불 이체하고, 주문 상세 관리자 메모에 처리 내용을 남기세요. 이미 "배송 완료"인 주문은 상태를 바꿀 수 없으므로(전이표 참고) 반품 환불은 메모로 기록합니다. 재고는 상품 화면에서 직접 되돌립니다.
+화면에 반품 신청 기능은 없고 이메일로 받습니다. 상품이 도착하면 확인 후 3영업일 안에 환불 이체하고, 주문 상세 관리자 메모(고객 비공개)에 처리 내용을 남기세요. 이미 "배송 완료"인 주문은 상태를 바꿀 수 없으므로(전이표 참고) 반품 환불은 메모로 기록합니다. 재고는 상품 화면에서 직접 되돌립니다.
 
 ### 상품 등록
 
@@ -172,7 +172,7 @@ brand/            로고 원본(logo-source.png)과 벡터(logo.svg)
 
 ```sql
 delete from public.orders where created_at < now() - interval '5 years';            -- 품목·이력 함께 삭제
-delete from public.audit_logs where created_at < now() - interval '5 years';        -- 변경 기록 안의 주문 정보
+delete from public.audit_logs where created_at < now() - interval '5 years';        -- 변경 기록(개인정보는 없음)
 ```
 
 ## 4. 고치는 법

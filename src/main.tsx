@@ -1,3 +1,4 @@
+import './app/frameGuard';
 import 'pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css';
 import '@fontsource-variable/bodoni-moda';
 import './styles/base.css';

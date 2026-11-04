@@ -246,19 +246,28 @@ function targetName(entry: AuditEntry): string {
   return '';
 }
 
-/** "field: before → after" for an update, timestamps left out when anything else changed. */
+/**
+ * "field: before → after" for an update, timestamps left out when anything else changed. Order rows
+ * are logged without personal/free-text fields; `redacted_changed` lists the ones that changed.
+ */
 function changes(entry: AuditEntry): string[] {
   if (entry.action !== 'UPDATE') return [];
   const before = asObject(entry.before) ?? {};
-  const after = asObject(entry.after) ?? {};
+  const { redacted_changed: redacted, ...after } = asObject(entry.after) ?? {};
   const keys = Object.keys(after).filter(
     (key) => !IGNORED_FIELDS.has(key) && JSON.stringify(before[key]) !== JSON.stringify(after[key]),
   );
   const meaningful = keys.filter((key) => !key.endsWith('_at'));
-  return (meaningful.length ? meaningful : keys).map(
-    (key) =>
-      `${FIELD_LABEL[key] ?? key}: ${formatValue(key, before[key])} → ${formatValue(key, after[key])}`,
-  );
+  const hidden = Array.isArray(redacted)
+    ? redacted.map((key) => `${FIELD_LABEL[String(key)] ?? String(key)} 변경`)
+    : [];
+  return [
+    ...(meaningful.length || hidden.length ? meaningful : keys).map(
+      (key) =>
+        `${FIELD_LABEL[key] ?? key}: ${formatValue(key, before[key])} → ${formatValue(key, after[key])}`,
+    ),
+    ...hidden,
+  ];
 }
 
 function AuditLog() {

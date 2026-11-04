@@ -31,7 +31,8 @@ export function useProfile() {
 }
 
 export async function updateProfile(profile: Profile, values: ProfileValues): Promise<void> {
-  // Keep the original consent time while consent is unchanged; record a new one when given again.
+  // Any non-null value means "agreed"; the stamp_marketing_consent trigger (0009) stores the original
+  // consent time while consent is unchanged and now() when it is given again.
   const marketingAgreedAt = values.marketingAgreed
     ? (profile.marketing_agreed_at ?? new Date().toISOString())
     : null;

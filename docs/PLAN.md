@@ -333,7 +333,7 @@ created_at timestamptz not null default now(), updated_at timestamptz not null d
 | `handle_new_user()` trigger (auth.users after insert) | — | `raw_user_meta_data`에서 `name`, `phone`, `terms_agreed`, `privacy_agreed`, `marketing_agreed` 읽음. `terms_agreed`·`privacy_agreed`가 `true`가 아니면 `raise exception 'TERMS_REQUIRED'` → 가입 실패. profiles insert (email = new.email). |
 | `handle_user_email_update()` trigger (auth.users after update of email) | — | profiles.email 동기화 |
 | `set_updated_at()` | — | |
-| `log_audit()` trigger (products, product_variants, product_images, categories, orders, site_settings, home_sections after I/U/D) | — | actor `auth.uid()`, before/after `to_jsonb`; orders는 `admin_note`만 바뀐 경우도 기록 |
+| `log_audit()` trigger (products, product_variants, product_images, categories, orders, site_settings, home_sections after I/U/D) | — | actor `auth.uid()`, before/after `to_jsonb`; orders는 수령인·연락처·주소·메모·입금자명·취소 사유·`admin_note`를 빼고 기록, 그 값만 바뀐 경우 `after.redacted_changed`에 항목 이름만(0009) |
 | `generate_order_no() returns text` | 내부 | `to_char(now() at time zone 'Asia/Seoul','YYYYMMDD') || '-' || 6자 base32`; `create_order` 안에서 unique 충돌 시 최대 5회 재시도 |
 | `create_order(p_items jsonb, p_address jsonb, p_memo text, p_depositor_name text) returns jsonb` | authenticated | 아래 6.4 |
 | `cancel_my_order(p_order_id uuid, p_reason text) returns void` | authenticated | 본인 주문만. `pending_payment` → `cancelled` + 재고 복구 + 이벤트. `paid`/`preparing` → `cancel_requested_at = now(), cancel_reason = p_reason`(상태 불변) + 이벤트(note '취소 요청'). 그 외 `raise 'CANNOT_CANCEL'` |
@@ -369,7 +369,7 @@ created_at timestamptz not null default now(), updated_at timestamptz not null d
       'bank', jsonb_build_object('bank_name', …, 'bank_account', …, 'bank_holder', …))
 ```
 오류는 `raise exception using message = '<CODE>', detail = <variant_id or ''>, errcode = 'P0001'`. 클라이언트 `src/lib/rpcErrors.ts`가 `message`로 한국어 매핑:
-`AUTH_REQUIRED`→"로그인이 필요합니다", `OUT_OF_STOCK`→"재고가 부족한 상품이 있습니다", `ITEM_UNAVAILABLE`→"판매 중이 아닌 상품이 있습니다", `BANK_NOT_CONFIGURED`→"현재 주문을 받을 수 없습니다", `CANNOT_CANCEL`→"취소할 수 없는 주문입니다", `ACTIVE_ORDERS`→"진행 중인 주문이 있어 탈퇴할 수 없습니다", `FORBIDDEN`→"권한이 없습니다", `INVALID_INPUT`→"입력값을 확인하세요".
+`AUTH_REQUIRED`→"로그인이 필요합니다", `OUT_OF_STOCK`→"재고가 부족한 상품이 있습니다", `ITEM_UNAVAILABLE`→"판매 중이 아닌 상품이 있습니다", `BANK_NOT_CONFIGURED`→"현재 주문을 받을 수 없습니다", `CANNOT_CANCEL`→"취소할 수 없는 주문입니다", `ACTIVE_ORDERS`→"진행 중인 주문이 있어 탈퇴할 수 없습니다", `FORBIDDEN`→"권한이 없습니다", `INVALID_INPUT`→"입력값을 확인하세요", `TOO_MANY_PENDING`(입금 대기 3건 이상)·`TOO_MANY_ORDERS`(최근 1시간 10건 이상)는 `create_order`의 고객별 한도(0009).
 
 ### 6.5 주문 상태 전이표 (서버가 진실, UI는 같은 표를 `src/types/domain.ts`의 `ORDER_TRANSITIONS`로 복제)
 
@@ -393,7 +393,7 @@ created_at timestamptz not null default now(), updated_at timestamptz not null d
 2. exists orders where user_id = v_user and status in ('pending_payment','paid','preparing','shipped') → raise 'ACTIVE_ORDERS'
 3. delete addresses, wishlist_items where user_id = v_user
 4. update orders set user_id = null where user_id = v_user      -- 주문·수령인 정보는 전자상거래법 보존(5년) 근거로 유지, 계정 연결만 해제
-5. insert audit_logs (actor v_user, 'ACCOUNT_DELETED', 'profiles', v_user::text, before = to_jsonb(profile 중 email·name만 해시 sha256), after null)
+5. insert audit_logs (actor v_user, 'ACCOUNT_DELETED', 'profiles', v_user::text, before null, after null)      -- 0009: 이메일·이름 해시도 남기지 않음
 6. delete from auth.users where id = v_user      -- profiles cascade
 ```
 클라이언트는 성공 후 `supabase.auth.signOut()` + `/`로. (호스팅 Supabase에서 `postgres` 소유 security definer 함수의 `auth.users` delete는 동작. 안 될 경우 대비: SUPABASE_SETUP.md에 "Dashboard에서 수동 삭제" 절차 병기.)
@@ -418,7 +418,7 @@ created_at timestamptz not null default now(), updated_at timestamptz not null d
 | home_sections | `is_active or is_admin()` | `is_admin()` | `is_admin()` | `is_admin()` |
 | audit_logs | `is_admin()` | 없음(트리거 definer) | 없음 | 없음 |
 
-`orders`의 admin update는 `status` 컬럼 변경을 막기 위해 컬럼 grant: `grant update (admin_note, carrier, tracking_no) on orders to authenticated` (나머지 컬럼은 함수만).
+`orders`의 admin update는 `status` 컬럼 변경을 막기 위해 컬럼 grant: `grant update (admin_note, carrier, tracking_no) on orders to authenticated` (나머지 컬럼은 함수만). 읽기도 컬럼 grant(0009): `orders.admin_note`, `order_events.actor_id`·`note`, `site_settings.updated_by`는 API 역할이 select 불가 — 관리자는 `admin_get_order(p_order_id) returns jsonb`(주문+items+events+customer)로 읽음. `profiles.marketing_agreed_at`은 트리거 `stamp_marketing_consent`가 now()/기존 값으로 고정.
 
 ### 6.8 Storage (`0006`)
 
