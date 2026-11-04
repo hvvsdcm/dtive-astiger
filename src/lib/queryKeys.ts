@@ -9,6 +9,7 @@ export const qk = {
   orders: (userId: string | undefined) => ['orders', userId] as const,
   order: (id: string) => ['order', id] as const,
   addresses: (userId: string | undefined) => ['addresses', userId] as const,
+  profile: (userId: string | undefined) => ['profile', userId] as const,
   admin: {
     products: (filters: object = {}) => ['admin', 'products', filters] as const,
     product: (id: string) => ['admin', 'product', id] as const,

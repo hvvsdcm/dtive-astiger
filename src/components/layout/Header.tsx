@@ -1,12 +1,16 @@
 import { Heart, Menu, Search, ShoppingBag, User } from 'lucide-react';
 import { useState, useSyncExternalStore } from 'react';
-import { Link, NavLink } from 'react-router';
+import { Link } from 'react-router';
 import type { NavItem } from '@/config/site';
 import { selectCount, useCart } from '@/features/cart/store';
+import { useSession } from '@/features/auth/session';
+import { useStoreNav } from '@/features/catalog/hooks';
 import { cn } from '@/components/ui/cn';
 import { Icon } from '@/components/ui/Icon';
 import { Logo } from '@/components/ui/Logo';
+import { MegaMenu } from './MegaMenu';
 import { MobileMenu } from './MobileMenu';
+import { SearchOverlay } from './SearchOverlay';
 
 function subscribeScroll(onChange: () => void) {
   window.addEventListener('scroll', onChange, { passive: true });
@@ -14,6 +18,7 @@ function subscribeScroll(onChange: () => void) {
 }
 
 export type HeaderProps = {
+  /** Menu used when the category query fails. */
   nav: NavItem[];
   /** Transparent with white text over a full-bleed hero until the page scrolls (home only). */
   overlay?: boolean;
@@ -25,6 +30,10 @@ const desktopIconButton = 'hidden size-10 items-center justify-center lg:inline-
 
 export function Header({ nav, overlay = false }: HeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [megaOpen, setMegaOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const storeNav = useStoreNav();
+  const menuNav = storeNav.nav ?? (storeNav.failed ? nav : []);
   const scrolled = useSyncExternalStore(
     subscribeScroll,
     () => window.scrollY > 0,
@@ -32,7 +41,8 @@ export function Header({ nav, overlay = false }: HeaderProps) {
   );
   const count = useCart(selectCount);
   const openCart = useCart((state) => state.open);
-  const transparent = overlay && !scrolled;
+  const { session } = useSession();
+  const transparent = overlay && !scrolled && !megaOpen;
 
   return (
     <header
@@ -53,25 +63,7 @@ export function Header({ nav, overlay = false }: HeaderProps) {
           >
             <Icon icon={Menu} />
           </button>
-          <nav aria-label="주 메뉴" className="hidden lg:block">
-            <ul className="flex items-center gap-6">
-              {nav.map((item) => (
-                <li key={item.href}>
-                  <NavLink
-                    to={item.href}
-                    className={({ isActive }) =>
-                      cn(
-                        'text-sm label-caps underline-offset-4 hover:underline',
-                        isActive && 'underline',
-                      )
-                    }
-                  >
-                    {item.label}
-                  </NavLink>
-                </li>
-              ))}
-            </ul>
-          </nav>
+          <MegaMenu nav={menuNav} onOpenChange={setMegaOpen} />
         </div>
 
         <Link to="/" className="flex justify-center">
@@ -79,10 +71,20 @@ export function Header({ nav, overlay = false }: HeaderProps) {
         </Link>
 
         <div className="-mr-2 flex items-center justify-end">
-          <Link to="/search" className={iconButton} aria-label="검색">
+          <button
+            type="button"
+            className={iconButton}
+            aria-label="검색"
+            aria-haspopup="dialog"
+            onClick={() => setSearchOpen(true)}
+          >
             <Icon icon={Search} />
-          </Link>
-          <Link to="/login" className={desktopIconButton} aria-label="계정">
+          </button>
+          <Link
+            to={session ? '/account' : '/login'}
+            className={desktopIconButton}
+            aria-label="계정"
+          >
             <Icon icon={User} />
           </Link>
           <Link to="/account/wishlist" className={desktopIconButton} aria-label="위시리스트">
@@ -107,7 +109,8 @@ export function Header({ nav, overlay = false }: HeaderProps) {
         </div>
       </div>
 
-      <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} nav={nav} />
+      <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} nav={menuNav} />
+      <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
     </header>
   );
 }

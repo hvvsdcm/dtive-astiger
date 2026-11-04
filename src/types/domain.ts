@@ -1,25 +1,22 @@
+import { Constants, type Database } from './database';
+
 /**
- * Domain enums mirrored from the database (supabase/migrations 0002_types.sql) and the order state
- * machine (docs/PLAN.md 6.5). The server is the source of truth; these drive labels and which
- * actions the UI offers.
+ * Domain enums from the generated database types (supabase/migrations 0002_types.sql) and the
+ * order state machine (docs/PLAN.md 6.5). The server is the source of truth; these drive labels and
+ * which actions the UI offers.
  */
 
-export const ORDER_STATUSES = [
-  'pending_payment',
-  'paid',
-  'preparing',
-  'shipped',
-  'delivered',
-  'cancelled',
-  'refunded',
-] as const;
-export type OrderStatus = (typeof ORDER_STATUSES)[number];
+type Enums = Database['public']['Enums'];
 
-export const PRODUCT_STATUSES = ['draft', 'active', 'archived'] as const;
-export type ProductStatus = (typeof PRODUCT_STATUSES)[number];
+export type OrderStatus = Enums['order_status'];
+export const ORDER_STATUSES: readonly OrderStatus[] = Constants.public.Enums.order_status;
 
-export const HOME_SECTION_KINDS = ['hero', 'split', 'collection', 'lookbook'] as const;
-export type HomeSectionKind = (typeof HOME_SECTION_KINDS)[number];
+export type ProductStatus = Enums['product_status'];
+export const PRODUCT_STATUSES: readonly ProductStatus[] = Constants.public.Enums.product_status;
+
+export type HomeSectionKind = Enums['home_section_kind'];
+export const HOME_SECTION_KINDS: readonly HomeSectionKind[] =
+  Constants.public.Enums.home_section_kind;
 
 export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
   pending_payment: '입금 대기',

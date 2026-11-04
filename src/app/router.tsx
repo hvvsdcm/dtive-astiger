@@ -1,5 +1,8 @@
 import { createBrowserRouter, type RouteObject } from 'react-router';
 import { StoreLayout } from '@/components/layout/StoreLayout';
+import { catalogRoutes } from '@/features/catalog/routes';
+import { accountRoutes } from '@/features/account/routes';
+import { authRoutes } from '@/features/auth/routes';
 import { NotFoundPage } from './NotFoundPage';
 import { RouteError } from './RouteError';
 
@@ -10,6 +13,9 @@ import { RouteError } from './RouteError';
  */
 const storeRoutes: RouteObject[] = [
   // catalog (S4) · auth/account (S3) · cart/checkout/orders (S5) · content pages (S8)
+  ...catalogRoutes,
+  ...authRoutes,
+  ...accountRoutes,
   { path: '*', element: <NotFoundPage /> },
 ];
 

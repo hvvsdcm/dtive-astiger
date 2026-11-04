@@ -4,6 +4,7 @@ import { Link } from 'react-router';
 import type { NavItem } from '@/config/site';
 import { Drawer } from '@/components/ui/Drawer';
 import { Icon } from '@/components/ui/Icon';
+import { useSession } from '@/features/auth/session';
 
 export type MobileMenuProps = {
   open: boolean;
@@ -16,6 +17,7 @@ const rowClass = 'flex h-12 w-full items-center justify-between label-caps text-
 /** Full-screen panel: first-level items, second level as accordions. */
 export function MobileMenu({ open, onClose, nav }: MobileMenuProps) {
   const [expanded, setExpanded] = useState<string | null>(null);
+  const { session } = useSession();
 
   return (
     <Drawer
@@ -77,8 +79,12 @@ export function MobileMenu({ open, onClose, nav }: MobileMenuProps) {
         </ul>
         <ul className="py-4">
           <li>
-            <Link to="/login" onClick={onClose} className="flex h-10 items-center text-sm">
-              로그인
+            <Link
+              to={session ? '/account' : '/login'}
+              onClick={onClose}
+              className="flex h-10 items-center text-sm"
+            >
+              {session ? '마이페이지' : '로그인'}
             </Link>
           </li>
           <li>

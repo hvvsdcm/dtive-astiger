@@ -1,5 +1,8 @@
 import { z } from 'zod';
 
+// CSP has no 'unsafe-eval'; stop zod from probing `new Function` on first parse.
+z.config({ jitless: true });
+
 const schema = z.object({
   VITE_SUPABASE_URL: z.url({ protocol: /^https?$/ }),
   VITE_SUPABASE_ANON_KEY: z.string().min(20),

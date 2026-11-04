@@ -25,16 +25,26 @@ function contentSecurityPolicy(supabaseUrl: string | undefined, dev: boolean): s
   const supabaseHttp = supabase ? [supabase.http] : [];
   const supabaseWs = supabase ? [supabase.ws] : [];
   const nonce = dev ? [`'nonce-${DEV_NONCE}'`] : [];
+  // On an http dev origin the postcode script frames http://postcode.map.* (then 302 → https).
+  const devPostcodeFrames = dev
+    ? ['http://postcode.map.kakao.com', 'http://postcode.map.daum.net']
+    : [];
 
   const directives: Directives = {
     'default-src': ["'self'"],
     // Daum/Kakao postcode API loader (domain moved to kakaocdn in 2026; daumcdn kept while both are served)
     'script-src': ["'self'", 'https://t1.kakaocdn.net', 'https://t1.daumcdn.net', ...nonce],
     'style-src': ["'self'", ...nonce],
+    // Kakao postcode builds its widget in an about:blank frame/popup that inherits this policy and sizes it with style attributes; <style> elements stay blocked.
+    'style-src-attr': ["'unsafe-inline'"],
     'img-src': ["'self'", 'data:', 'blob:', ...supabaseHttp, 'https://images.unsplash.com'],
     'font-src': ["'self'"],
     'connect-src': ["'self'", ...supabaseHttp, ...supabaseWs],
-    'frame-src': ['https://postcode.map.kakao.com', 'https://postcode.map.daum.net'],
+    'frame-src': [
+      'https://postcode.map.kakao.com',
+      'https://postcode.map.daum.net',
+      ...devPostcodeFrames,
+    ],
     'base-uri': ["'self'"],
     'form-action': ["'self'"],
     'object-src': ["'none'"],
