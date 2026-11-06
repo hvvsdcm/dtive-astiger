@@ -38,6 +38,7 @@ npm run dev                   # http://127.0.0.1:5174
 
 ## 문서
 
+- [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md): 공동 작업자용 수정 가이드 (작업 흐름, 무엇을 어디서 고치는지)
 - [docs/HANDOVER.md](docs/HANDOVER.md): 구조, 운영 시작 체크리스트(Supabase 클라우드 설정, 사업자 정보), 일상 운영, 백업, 라이선스
 - [docs/ADMIN-GUIDE.md](docs/ADMIN-GUIDE.md): 관리자 페이지 사용법 (개발 지식 없이 읽는 문서)
 - [docs/DEPLOY.md](docs/DEPLOY.md): Cloudflare 배포, Supabase 백업·멈춤 방지

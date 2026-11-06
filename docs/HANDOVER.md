@@ -199,6 +199,8 @@ delete from public.audit_logs where created_at < now() - interval '5 years';    
 
 ## 4. 고치는 법
 
+작업 흐름(브랜치·PR)과 항목별 자세한 순서는 [CONTRIBUTING](CONTRIBUTING.md)에 있습니다. 아래는 요약입니다.
+
 - **색·글꼴·크기**: `src/styles/tokens.css`만 수정. 둥근 모서리·그림자·그라데이션은 일부러 없앴습니다([AGENTS.md](../AGENTS.md)).
 - **메뉴**: 상단 메뉴는 활성 상태인 최상위 카테고리(최대 5개)와 룩북으로 자동 구성됩니다(관리자 → 카테고리). 푸터 링크는 `src/config/site.ts`.
 - **로고**: `brand/logo.svg`를 바꾸고 `src/assets/logo.svg`에 복사(글자색은 CSS가 입힘). 파비콘은 `brand/logo-source.png`를 바꾼 뒤 `npm run favicons`.
